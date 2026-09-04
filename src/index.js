@@ -1,3 +1,99 @@
+// --- DEBUG CONSOLE (shows logs on screen) ---
+(function setupDebugConsole() {
+    const debugEl = document.getElementById('debugConsole');
+    let isVisible = false;
+    
+    // Toggle with triple-tap on status bar
+    document.addEventListener('DOMContentLoaded', () => {
+        const status = document.getElementById('status');
+        if (status) {
+            let tapCount = 0;
+            let tapTimer = null;
+            status.addEventListener('click', () => {
+                tapCount++;
+                if (tapTimer) clearTimeout(tapTimer);
+                tapTimer = setTimeout(() => {
+                    if (tapCount >= 3) {
+                        isVisible = !isVisible;
+                        debugEl.style.display = isVisible ? 'block' : 'none';
+                        if (isVisible) {
+                            addDebugLog('🐛 Debug console enabled', 'success');
+                            addDebugLog('📱 Platform: ' + Capacitor.getPlatform(), 'info');
+                        }
+                        tapCount = 0;
+                    } else {
+                        tapCount = 0;
+                    }
+                }, 300);
+            });
+        }
+    });
+    
+    function addDebugLog(message, type = 'info') {
+        if (!debugEl) return;
+        const div = document.createElement('div');
+        div.className = `log-${type}`;
+        const timestamp = new Date().toLocaleTimeString();
+        div.textContent = `[${timestamp}] ${message}`;
+        debugEl.appendChild(div);
+        debugEl.scrollTop = debugEl.scrollHeight;
+        
+        // Keep only last 100 messages
+        while (debugEl.children.length > 100) {
+            debugEl.removeChild(debugEl.firstChild);
+        }
+    }
+    
+    // Override console methods
+    const origLog = console.log;
+    const origError = console.error;
+    const origWarn = console.warn;
+    const origInfo = console.info;
+    
+    console.log = function(...args) {
+        addDebugLog(args.join(' '), 'info');
+        origLog.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+        addDebugLog('❌ ' + args.join(' '), 'error');
+        origError.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+        addDebugLog('⚠️ ' + args.join(' '), 'warn');
+        origWarn.apply(console, args);
+    };
+    
+    console.info = function(...args) {
+        addDebugLog('ℹ️ ' + args.join(' '), 'info');
+        origInfo.apply(console, args);
+    };
+    
+    // Add a manual debug function
+    window.debug = function(msg) {
+        addDebugLog(msg, 'debug');
+    };
+    
+    // Catch uncaught errors
+    window.onerror = function(message, source, lineno, colno, error) {
+        addDebugLog('💥 Uncaught: ' + message + ' at ' + source + ':' + lineno, 'error');
+        return false;
+    };
+    
+    // Make it globally accessible
+    window.toggleDebug = function() {
+        isVisible = !isVisible;
+        debugEl.style.display = isVisible ? 'block' : 'none';
+        if (isVisible) {
+            addDebugLog('🐛 Debug console toggled', 'success');
+        }
+    };
+    
+    console.log('🐛 Debug console ready - triple-tap status bar to toggle');
+})();
+
+// --- Imports ---
 import { FilePicker } from '@capawesome/capacitor-file-picker';
 import { FileOpener } from '@capawesome-team/capacitor-file-opener';
 import { Capacitor } from '@capacitor/core';
