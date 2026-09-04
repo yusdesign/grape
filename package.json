@@ -1,0 +1,31 @@
+{
+  "name": "grape",
+  "version": "1.0.0",
+  "description": "grape is an app for viewing UML-like graphs with vis-network",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "cp -r src/* www/ && cp public/* www/",
+    "build:android": "npm run build && npx cap sync android",
+    "build:apk": "cd android && ./gradlew assembleDebug",
+    "build:release": "cd android && ./gradlew assembleRelease",
+    "clean": "rm -rf www/ android/ ios/",
+    "serve": "npx serve src",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^5.7.0",
+    "@capacitor/core": "^5.7.0",
+    "@capawesome/capacitor-file-access": "^5.0.0",
+    "vis-network": "^9.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.7.0",
+    "serve": "^14.2.1"
+  },
+  "capacitor": {
+    "appId": "com.yusdesign.grape",
+    "appName": "grape",
+    "webDir": "www"
+  }
+}
