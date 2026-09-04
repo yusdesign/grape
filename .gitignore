@@ -4,18 +4,25 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Capacitor
 android/
 ios/
-dist/
 www/
+dist/
+build/
+.capacitor/
 
 # Build outputs
 *.apk
 *.aab
 *.ipa
 *.dSYM.zip
+*.keystore
+*.jks
 
 # IDE
 .vscode/
@@ -23,25 +30,60 @@ www/
 *.swp
 *.swo
 *~
+*.iml
+.project
+.classpath
+.settings/
 
 # OS
 .DS_Store
 Thumbs.db
+*.tmp
+*.temp
 
 # Environment
 .env
 .env.local
 .env.*.local
+*.secret
 
 # Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
 # Coverage
 coverage/
 .nyc_output/
 
 # Misc
-*.tmp
-*.temp
 .cache/
+.parcel-cache/
+.next/
+out/
+.vercel
+.netlify
+*.tgz
+
+# Capacitor specific
+android/.project
+android/.classpath
+android/.settings/
+android/app/src/main/assets/public/
+ios/Pods/
+ios/Podfile.lock
+
+# Web build
+www/
+dist/
+build/
+
+# Generated files
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/build/
+ios/App/build/
+ios/App/Pods/
