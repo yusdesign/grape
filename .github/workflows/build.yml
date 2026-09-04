@@ -7,7 +7,7 @@ on:
       - 'v*'
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
 
 env:
   NODE_VERSION: 20
@@ -22,13 +22,11 @@ jobs:
       version: ${{ steps.get_version.outputs.version }}
     
     steps:
-      # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      # 2. Get version from tag (if any)
       - name: Get version
         id: get_version
         run: |
@@ -41,50 +39,40 @@ jobs:
             echo "release_ready=false" >> $GITHUB_OUTPUT
           fi
       
-      # 3. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       
-      # 4. Install dependencies
       - name: Install dependencies
         run: |
           npm ci --no-audit --no-fund
           npm install -g @capacitor/cli
       
-      # 5. Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
       
-      # 6. Setup Android SDK
+      # ⭐ FIXED: Android SDK Setup
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: |
-            platforms;android-34
-            build-tools;34.0.0
-            cmdline-tools;latest
+          # Space-separated list of packages
+          packages: 'platforms;android-35 build-tools;35.0.0 cmdline-tools;latest'
       
-      # 7. Build web assets
       - name: Build web assets
         run: |
           mkdir -p www
-          cp -r src/* www/
-          cp -r public/* www/ 2>/dev/null || true
-          echo "Built at $(date)"
+          npm run build
       
-      # 8. Capacitor sync
       - name: Capacitor sync
         run: npx cap sync android
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
       
-      # 9. Create keystore (for release builds)
       - name: Create keystore
         if: steps.get_version.outputs.release_ready == 'true'
         run: |
@@ -94,14 +82,12 @@ jobs:
             -keypass ${{ secrets.KEY_PASSWORD }} \
             -dname "CN=Graph Viewer, OU=Dev, O=Company, L=City, S=State, C=US"
       
-      # 10. Build Debug APK (always)
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
       
-      # 11. Build Release APK (if tagged)
       - name: Build Release APK
         if: steps.get_version.outputs.release_ready == 'true'
         run: |
@@ -111,7 +97,6 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       
-      # 12. Upload Debug APK
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -119,7 +104,6 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
       
-      # 13. Upload Release APK (if tagged)
       - name: Upload Release APK
         if: steps.get_version.outputs.release_ready == 'true'
         uses: actions/upload-artifact@v4
@@ -128,7 +112,6 @@ jobs:
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 90
       
-      # 14. Create GitHub Release (ONLY if build succeeded and tagged)
       - name: Create Release
         if: steps.get_version.outputs.release_ready == 'true' && success()
         uses: softprops/action-gh-release@v1
@@ -144,7 +127,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      # 15. Notify on failure
       - name: Notify on failure
         if: failure()
         run: |
