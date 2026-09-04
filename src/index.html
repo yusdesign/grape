@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>grape</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="toolbar">
+        <button id="openFileBtn">📂 Open File</button>
+        <button id="sampleFileBtn">📄 Load Sample</button>
+        <button id="exportBtn">💾 Export Graph</button>
+        <button id="resetViewBtn">🔄 Reset View</button>
+        <span id="status">Ready</span>
+        <span id="nodeCount"></span>
+    </div>
+    
+    <div id="graphContainer"></div>
+    
+    <div id="contextMenu" style="display:none; position:fixed; background:white; border:1px solid #ccc; padding:8px; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.2); z-index:1000;">
+        <div id="contextMenuContent"></div>
+    </div>
+    
+    <script type="module" src="index.js"></script>
+</body>
+</html>
