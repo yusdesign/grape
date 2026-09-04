@@ -11,14 +11,14 @@ on:
 
 env:
   NODE_VERSION: 22
-  JAVA_VERSION: 17
+  JAVA_VERSION: 21  # ⭐ Updated to 21
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
     outputs:
-      release_ready: ${{ steps.get_version.outputs.release_ready }}
+      release_ready: ${{ steps.check_tag.outputs.release_ready }}
       version: ${{ steps.get_version.outputs.version }}
     
     steps:
@@ -68,11 +68,8 @@ jobs:
       
       - name: Add Android platform and sync
         run: |
-          # Remove old android folder if exists
           rm -rf android/
-          # Add Android platform
           npx cap add android
-          # Sync
           npx cap sync android
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
@@ -81,10 +78,8 @@ jobs:
         run: |
           if [ -f "android/gradlew" ]; then
             echo "✅ gradlew found"
-            ls -la android/gradle/wrapper/
           else
             echo "❌ gradlew not found!"
-            echo "Contents of android/:"
             ls -la android/
             exit 1
           fi
