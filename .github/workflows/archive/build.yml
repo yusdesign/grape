@@ -1,0 +1,141 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Manual trigger
+
+env:
+  NODE_VERSION: 20
+  JAVA_VERSION: 17
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm install -g @capacitor/cli
+      
+      # 4. Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+      
+      # 5. Setup Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-34
+            build-tools;34.0.0
+            cmdline-tools;latest
+      
+      # 6. Build web assets
+      - name: Build web assets
+        run: |
+          mkdir -p www
+          cp -r src/* www/
+          cp -r public/* www/ 2>/dev/null || true
+          echo "Built at $(date)"
+      
+      # 7. Capacitor sync
+      - name: Capacitor sync
+        run: npx cap sync android
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+      
+      # 8. Create keystore (for release builds)
+      - name: Create keystore
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          keytool -genkey -v -keystore release.keystore \
+            -alias key0 -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.KEY_PASSWORD }} \
+            -dname "CN=Graph Viewer, OU=Dev, O=Company, L=City, S=State, C=US"
+      
+      # 9. Build Debug APK
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      
+      # 10. Build Release APK (if tagged)
+      - name: Build Release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cd android
+          ./gradlew assembleRelease
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      
+      # 11. Upload Debug APK
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-viewer-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+      
+      # 12. Upload Release APK (if tagged)
+      - name: Upload Release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-viewer-release
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 90
+      
+      # 13. Generate build info
+      - name: Generate build info
+        run: |
+          echo "BUILD_DATE=$(date -Iseconds)" >> $GITHUB_ENV
+          echo "GIT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "GIT_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+      
+      # 14. Create GitHub Release (if tagged)
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # 15. Notify on failure
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Build failed for commit ${GITHUB_SHA::7}"
+          echo "Check logs at: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
