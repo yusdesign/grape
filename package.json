@@ -16,7 +16,8 @@
   "dependencies": {
     "@capacitor/android": "^5.7.0",
     "@capacitor/core": "^5.7.0",
-    "@capawesome/capacitor-file-access": "^5.0.0",
+    "@capawesome/capacitor-file-picker": "^8.0.6",
+    "@capawesome-team/capacitor-file-opener": "^8.0.3",
     "vis-network": "^9.1.2"
   },
   "devDependencies": {
