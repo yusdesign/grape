@@ -11,14 +11,14 @@ on:
 
 env:
   NODE_VERSION: 22
-  JAVA_VERSION: 21  # ⭐ Updated to 21
+  JAVA_VERSION: 21
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
     outputs:
-      release_ready: ${{ steps.check_tag.outputs.release_ready }}
+      release_ready: ${{ steps.get_version.outputs.release_ready }}
       version: ${{ steps.get_version.outputs.version }}
     
     steps:
@@ -65,6 +65,11 @@ jobs:
         run: |
           mkdir -p www
           npm run build
+          ls -la www/
+          if [ -f "public/sample.json" ]; then
+            cp public/sample.json www/
+            echo "✅ sample.json copied to www/"
+          fi
       
       - name: Add Android platform and sync
         run: |
@@ -74,15 +79,90 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
       
-      - name: Verify Gradle wrapper exists
+      - name: Create Android file_paths.xml
         run: |
-          if [ -f "android/gradlew" ]; then
-            echo "✅ gradlew found"
-          else
-            echo "❌ gradlew not found!"
-            ls -la android/
-            exit 1
-          fi
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/file_paths.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+              <files-path name="files" path="." />
+              <cache-path name="cache" path="." />
+              <external-files-path name="external-files" path="." />
+              <external-cache-path name="external-cache" path="." />
+              <external-path name="external" path="." />
+          </paths>
+          EOF
+          echo "✅ file_paths.xml created"
+      
+      - name: Update MainActivity with permissions
+        run: |
+          cat > android/app/src/main/java/com/yusdesign/grape/MainActivity.java << 'EOF'
+          package com.yusdesign.grape;
+
+          import android.Manifest;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.webkit.WebView;
+          import androidx.core.app.ActivityCompat;
+          import androidx.core.content.ContextCompat;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              private static final int PERMISSION_REQUEST_CODE = 100;
+              private static final String[] REQUIRED_PERMISSIONS = {
+                  Manifest.permission.READ_EXTERNAL_STORAGE,
+                  Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                  Manifest.permission.ACCESS_MEDIA_LOCATION
+              };
+
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  
+                  // Enable WebView debugging
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                      WebView.setWebContentsDebuggingEnabled(true);
+                  }
+                  
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                      requestStoragePermissions();
+                  }
+              }
+
+              private void requestStoragePermissions() {
+                  boolean allGranted = true;
+                  for (String permission : REQUIRED_PERMISSIONS) {
+                      if (ContextCompat.checkSelfPermission(this, permission) 
+                          != PackageManager.PERMISSION_GRANTED) {
+                          allGranted = false;
+                          break;
+                      }
+                  }
+                  
+                  if (!allGranted) {
+                      ActivityCompat.requestPermissions(
+                          this, 
+                          REQUIRED_PERMISSIONS, 
+                          PERMISSION_REQUEST_CODE
+                      );
+                  }
+              }
+
+              @Override
+              public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                  super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+              }
+          }
+          EOF
+          echo "✅ MainActivity.java updated"
+      
+      - name: Verify Android files
+        run: |
+          echo "Checking file_paths.xml:"
+          ls -la android/app/src/main/res/xml/file_paths.xml || echo "❌ Missing!"
+          echo "Checking MainActivity.java:"
+          ls -la android/app/src/main/java/com/yusdesign/grape/MainActivity.java || echo "❌ Missing!"
       
       - name: Create keystore
         if: steps.get_version.outputs.release_ready == 'true'
