@@ -1,0 +1,22 @@
+{
+  "appId": "com.yusdesign.grape",
+  "appName": "grape",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "minSdkVersion": 21,
+    "targetSdkVersion": 34,
+    "buildOptions": {
+      "keystorePath": "release.keystore",
+      "keystoreAlias": "key0",
+      "keystorePassword": "${KEYSTORE_PASSWORD}",
+      "keyPassword": "${KEY_PASSWORD}"
+    }
+  },
+  "plugins": {
+    "FileAccess": {
+      "requestPermissions": true
+    }
+  }
+}
