@@ -20,101 +20,100 @@ setTimeout(() => {
 }, 1000);
 
 // ============================================================
-// DEBUG CONSOLE - Shows logs on screen (triple-tap status bar)
+// DEBUG CONSOLE - SIMPLE VERSION
 // ============================================================
-(function setupDebugConsole() {
-    const debugEl = document.getElementById('debugConsole');
-    let isVisible = false;
+(function() {
+    console.log('🔧 Setting up debug console...');
     
-    // Wait for DOM to load
-    document.addEventListener('DOMContentLoaded', () => {
-        const status = document.getElementById('status');
-        if (status) {
-            let tapCount = 0;
-            let tapTimer = null;
-            status.addEventListener('click', () => {
-                tapCount++;
-                if (tapTimer) clearTimeout(tapTimer);
-                tapTimer = setTimeout(() => {
-                    if (tapCount >= 3) {
-                        isVisible = !isVisible;
-                        debugEl.style.display = isVisible ? 'block' : 'none';
-                        if (isVisible) {
-                            addDebugLog('🐛 Debug console enabled', 'success');
-                            addDebugLog('📱 Platform: ' + (window.Capacitor ? Capacitor.getPlatform() : 'web'), 'info');
-                            addDebugLog('💡 Tap buttons to see logs', 'info');
-                        }
-                        tapCount = 0;
-                    } else {
-                        tapCount = 0;
-                    }
-                }, 300);
-            });
-        }
-    });
+    // Create debug console if missing
+    let debugEl = document.getElementById('debugConsole');
+    if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'debugConsole';
+        debugEl.style.cssText = `
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            background: rgba(0,0,0,0.95);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 8px 12px;
+            overflow-y: auto;
+            z-index: 99999;
+            border-top: 2px solid #0f0;
+            line-height: 1.6;
+            display: block;
+        `;
+        document.body.appendChild(debugEl);
+        console.log('✅ Debug console created');
+    }
     
-    function addDebugLog(message, type = 'info') {
-        if (!debugEl) return;
+    // Always show debug console on startup
+    debugEl.style.display = 'block';
+    debugEl.innerHTML = '<div style="color:#ff0;">🐛 DEBUG CONSOLE ACTIVE</div>';
+    
+    // Simple toggle on status bar double-click
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+        statusEl.addEventListener('dblclick', function() {
+            if (debugEl.style.display === 'none') {
+                debugEl.style.display = 'block';
+                addLog('🐛 Debug console shown', 'success');
+            } else {
+                debugEl.style.display = 'none';
+            }
+        });
+        console.log('✅ Double-click status bar to toggle debug');
+    }
+    
+    // Log function
+    function addLog(message, type = 'info') {
+        const colors = {
+            error: '#ff4444',
+            warn: '#ffaa00',
+            info: '#44aaff',
+            success: '#44ff88',
+            debug: '#888888'
+        };
         const div = document.createElement('div');
-        div.className = `log-${type}`;
+        div.style.color = colors[type] || '#ffffff';
         const timestamp = new Date().toLocaleTimeString();
         div.textContent = `[${timestamp}] ${message}`;
         debugEl.appendChild(div);
         debugEl.scrollTop = debugEl.scrollHeight;
-        
-        // Keep only last 100 messages
         while (debugEl.children.length > 100) {
             debugEl.removeChild(debugEl.firstChild);
         }
     }
     
-    // Override console methods
+    // Override console
     const origLog = console.log;
     const origError = console.error;
     const origWarn = console.warn;
-    const origInfo = console.info;
     
     console.log = function(...args) {
-        addDebugLog(args.join(' '), 'info');
+        addLog(args.join(' '), 'info');
         origLog.apply(console, args);
     };
-    
     console.error = function(...args) {
-        addDebugLog('❌ ' + args.join(' '), 'error');
+        addLog('❌ ' + args.join(' '), 'error');
         origError.apply(console, args);
     };
-    
     console.warn = function(...args) {
-        addDebugLog('⚠️ ' + args.join(' '), 'warn');
+        addLog('⚠️ ' + args.join(' '), 'warn');
         origWarn.apply(console, args);
     };
     
-    console.info = function(...args) {
-        addDebugLog('ℹ️ ' + args.join(' '), 'info');
-        origInfo.apply(console, args);
-    };
+    // Log startup
+    addLog('🚀 App starting...', 'success');
+    addLog('📱 Platform: ' + (window.Capacitor ? Capacitor.getPlatform() : 'web'), 'info');
+    addLog('💡 Double-click "Ready" to toggle this console', 'info');
     
-    // Add manual debug function
-    window.debug = function(msg) {
-        addDebugLog(msg, 'debug');
-    };
-    
-    // Catch uncaught errors
-    window.onerror = function(message, source, lineno, colno, error) {
-        addDebugLog('💥 Uncaught: ' + message + ' at ' + source + ':' + lineno, 'error');
-        return false;
-    };
-    
-    // Global toggle
-    window.toggleDebug = function() {
-        isVisible = !isVisible;
-        debugEl.style.display = isVisible ? 'block' : 'none';
-        if (isVisible) {
-            addDebugLog('🐛 Debug console toggled', 'success');
-        }
-    };
-    
-    console.log('🐛 Debug console ready - triple-tap status bar to toggle');
+    window.addDebugLog = addLog;
+    console.log('✅ Debug console ready');
 })();
 
 // ============================================================
@@ -179,6 +178,27 @@ function setStatus(message, isLoading = false) {
     } else {
         statusEl.textContent = message;
     }
+}
+
+// ============================================================
+// DEBUG: Check buttons exist
+// ============================================================
+console.log('🔍 Checking DOM elements:');
+console.log('  openBtn:', document.getElementById('openFileBtn'));
+console.log('  sampleBtn:', document.getElementById('sampleFileBtn'));
+console.log('  exportBtn:', document.getElementById('exportBtn'));
+console.log('  resetBtn:', document.getElementById('resetViewBtn'));
+console.log('  shareBtn:', document.getElementById('shareBtn'));
+console.log('  fileInput:', document.getElementById('fileInput'));
+console.log('  status:', document.getElementById('status'));
+console.log('  container:', document.getElementById('graphContainer'));
+
+// Test click handlers
+if (document.getElementById('sampleFileBtn')) {
+    document.getElementById('sampleFileBtn').addEventListener('click', function() {
+        console.log('🖱️ SAMPLE BUTTON CLICKED (inline test)');
+        alert('Button clicked!');
+    });
 }
 
 // ============================================================
