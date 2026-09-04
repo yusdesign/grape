@@ -1,4 +1,6 @@
-import { FileAccess } from '@capawesome/capacitor-file-access';
+import { FilePicker } from '@capawesome/capacitor-file-picker';
+import { FileOpener } from '@capawesome-team/capacitor-file-opener';
+import { Capacitor } from '@capacitor/core';
 import { DataSet, Network } from 'vis-network';
 
 // --- DOM Elements ---
