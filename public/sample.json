@@ -1,0 +1,18 @@
+{
+  "nodes": [
+    { "id": "A", "label": "Application", "color": "#FF6B6B" },
+    { "id": "B", "label": "UI Layer", "color": "#4ECDC4" },
+    { "id": "C", "label": "Business Logic", "color": "#45B7D1" },
+    { "id": "D", "label": "Data Access", "color": "#96CEB4" },
+    { "id": "E", "label": "Database", "color": "#FFEAA7" },
+    { "id": "F", "label": "External API", "color": "#DDA0DD" }
+  ],
+  "edges": [
+    { "from": "A", "to": "B", "label": "uses" },
+    { "from": "B", "to": "C", "label": "calls" },
+    { "from": "C", "to": "D", "label": "queries" },
+    { "from": "D", "to": "E", "label": "reads" },
+    { "from": "C", "to": "F", "label": "calls" },
+    { "from": "F", "to": "E", "label": "writes" }
+  ]
+}
