@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build & Release APK
 
 on:
   push:
@@ -17,6 +17,9 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    outputs:
+      release_ready: ${{ steps.check_tag.outputs.release_ready }}
+      version: ${{ steps.get_version.outputs.version }}
     
     steps:
       # 1. Checkout code
@@ -25,31 +28,40 @@ jobs:
         with:
           fetch-depth: 0
       
-      # 2. Setup Node.js
+      # 2. Get version from tag (if any)
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "release_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev" >> $GITHUB_OUTPUT
+            echo "release_ready=false" >> $GITHUB_OUTPUT
+          fi
+      
+      # 3. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       
-      # 3. Install dependencies
+      # 4. Install dependencies
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-            npm install -g @capacitor/cli
-          fi
+          npm ci --no-audit --no-fund
+          npm install -g @capacitor/cli
       
-      # 4. Setup Java
+      # 5. Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
       
-      # 5. Setup Android SDK
+      # 6. Setup Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -58,7 +70,7 @@ jobs:
             build-tools;34.0.0
             cmdline-tools;latest
       
-      # 6. Build web assets
+      # 7. Build web assets
       - name: Build web assets
         run: |
           mkdir -p www
@@ -66,15 +78,15 @@ jobs:
           cp -r public/* www/ 2>/dev/null || true
           echo "Built at $(date)"
       
-      # 7. Capacitor sync
+      # 8. Capacitor sync
       - name: Capacitor sync
         run: npx cap sync android
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
       
-      # 8. Create keystore (for release builds)
+      # 9. Create keystore (for release builds)
       - name: Create keystore
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.get_version.outputs.release_ready == 'true'
         run: |
           keytool -genkey -v -keystore release.keystore \
             -alias key0 -keyalg RSA -keysize 2048 -validity 10000 \
@@ -82,16 +94,16 @@ jobs:
             -keypass ${{ secrets.KEY_PASSWORD }} \
             -dname "CN=Graph Viewer, OU=Dev, O=Company, L=City, S=State, C=US"
       
-      # 9. Build Debug APK
+      # 10. Build Debug APK (always)
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
       
-      # 10. Build Release APK (if tagged)
+      # 11. Build Release APK (if tagged)
       - name: Build Release APK
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.get_version.outputs.release_ready == 'true'
         run: |
           cd android
           ./gradlew assembleRelease
@@ -99,33 +111,26 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       
-      # 11. Upload Debug APK
+      # 12. Upload Debug APK
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: graph-viewer-debug
+          name: grape-debug-${{ github.sha }}
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
       
-      # 12. Upload Release APK (if tagged)
+      # 13. Upload Release APK (if tagged)
       - name: Upload Release APK
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.get_version.outputs.release_ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: graph-viewer-release
+          name: grape-release-${{ steps.get_version.outputs.version }}
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 90
       
-      # 13. Generate build info
-      - name: Generate build info
-        run: |
-          echo "BUILD_DATE=$(date -Iseconds)" >> $GITHUB_ENV
-          echo "GIT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          echo "GIT_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
-      
-      # 14. Create GitHub Release (if tagged)
+      # 14. Create GitHub Release (ONLY if build succeeded and tagged)
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.get_version.outputs.release_ready == 'true' && success()
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -134,6 +139,8 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+          name: Release ${{ steps.get_version.outputs.version }}
+          tag_name: ${{ steps.get_version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
