@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "build": "cp -r src/* www/ && cp public/* www/",
+    "build": "mkdir -p www && cp -r src/* www/ && cp public/* www/ 2>/dev/null || true",
     "build:android": "npm run build && npx cap sync android",
     "build:apk": "cd android && ./gradlew assembleDebug",
     "build:release": "cd android && ./gradlew assembleRelease",
@@ -16,8 +16,9 @@
   "dependencies": {
     "@capacitor/android": "^8.0.0",
     "@capacitor/core": "^8.0.0",
-    "@capawesome/capacitor-file-picker": "^8.0.6",
-    "@capawesome-team/capacitor-file-opener": "^8.0.3",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capawesome/capacitor-asset-manager": "^8.0.3",
     "vis-network": "^9.1.2"
   },
   "devDependencies": {
@@ -28,5 +29,8 @@
     "appId": "com.yusdesign.grape",
     "appName": "grape",
     "webDir": "www"
+  },
+  "overrides": {
+    "uuid": "^11.0.0"
   }
 }
