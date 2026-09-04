@@ -167,17 +167,22 @@ async function loadFile(fileData, filename) {
     }
 }
 
-// --- 2. FILE PICKER (with better error handling) ---
+// --- 2. FILE PICKER (with debug logs) ---
 async function openFilePicker() {
+    console.log('📂 openFilePicker() called');
     try {
-        console.log('📂 Opening file picker...');
         setStatus('Opening file picker...', true);
+        console.log('📱 Platform:', Capacitor.getPlatform());
         
-        // Check if FilePicker is available
-        if (!FilePicker) {
-            throw new Error('FilePicker plugin not loaded');
+        console.log('🔍 Checking FilePicker availability...');
+        if (typeof FilePicker === 'undefined') {
+            console.error('❌ FilePicker is undefined!');
+            showToast('FilePicker plugin not loaded!', 'error');
+            return;
         }
+        console.log('✅ FilePicker is available');
         
+        console.log('📤 Calling FilePicker.pickFiles()...');
         const result = await FilePicker.pickFiles({
             types: ['application/json', 'text/xml', 'text/html', 'image/svg+xml', 'text/plain'],
             limit: 1,
@@ -188,12 +193,10 @@ async function openFilePicker() {
 
         if (result.files && result.files.length > 0) {
             const file = result.files[0];
-            console.log('📄 Selected file:', file.name
-, 'Path:', file.path, 'Size:', file.size);
+            console.log('📄 Selected file:', file.name, 'Size:', file.size);
             
             let fileData;
             if (Capacitor.isNativePlatform()) {
-                // For Android, use the file path with convertFileSrc
                 const fileUrl = Capacitor.convertFileSrc(file.path);
                 console.log('🔗 File URL:', fileUrl);
                 
@@ -204,24 +207,24 @@ async function openFilePicker() {
                 const blob = await response.blob();
                 const arrayBuffer = await blob.arrayBuffer();
                 fileData = new Uint8Array(arrayBuffer);
-                console.log(`📦 File loaded, ${fileData.length} bytes`);
+                console.log('📦 File loaded,', fileData.length, 'bytes');
             } else {
                 const arrayBuffer = await file.blob.arrayBuffer();
                 fileData = new Uint8Array(arrayBuffer);
             }
             
-            await loadFile(fileData, file.name
-);
+            await loadFile(fileData, file.name);
         } else {
             console.log('No files selected');
             setStatus('No file selected');
             showToast('No file selected', 'info');
         }
     } catch (error) {
-        console.error('❌ File picker error:', error);
+        console.error('❌ File picker error:', error.message);
+        console.error('Stack:', error.stack);
         if (!error.message?.includes('cancel')) {
-            showToast(`Picker error: ${error.message}`, 'error');
-            setStatus(`Error: ${error.message}`);
+            showToast('Picker error: ' + error.message, 'error');
+            setStatus('Error: ' + error.message);
         } else {
             setStatus('Cancelled');
             showToast('Cancelled', 'info');
@@ -521,81 +524,53 @@ window.focusNode = function(id) {
     }
 };
 
-// --- 6. SAMPLE DATA (Debug version with fallbacks) ---
-async function loadSample() {
+// --- 6. SAMPLE DATA (with debug logs) ---
+function loadSample() {
+    console.log('🔍 loadSample() called');
+    console.log('📱 Platform:', Capacitor.getPlatform());
+    console.log('📱 Is native:', Capacitor.isNativePlatform());
+    
     try {
-        console.log('🔍 Loading sample data...');
         setStatus('Loading sample...', true);
         showToast('Loading sample...', 'info');
         
-        // Try to fetch from multiple paths
-        const paths = [
-            'sample.json',
-            './sample.json',
-            '/sample.json',
-            'assets/sample.json',
-            './assets/sample.json'
-        ];
+        console.log('📦 Creating hardcoded sample data...');
+        const sample = {
+            nodes: [
+                { id: 'A', label: 'Class A', color: '#FF6B6B' },
+                { id: 'B', label: 'Class B', color: '#4ECDC4' },
+                { id: 'C', label: 'Class C', color: '#45B7D1' },
+                { id: 'D', label: 'Class D', color: '#96CEB4' },
+                { id: 'E', label: 'Class E', color: '#FFEAA7' },
+                { id: 'F', label: 'Class F', color: '#DDA0DD' }
+            ],
+            edges: [
+                { from: 'A', to: 'B', label: 'extends' },
+                { from: 'A', to: 'C', label: 'implements' },
+                { from: 'B', to: 'D', label: 'uses' },
+                { from: 'C', to: 'D', label: 'uses' },
+                { from: 'C', to: 'E', label: 'contains' },
+                { from: 'D', to: 'F', label: 'depends' },
+                { from: 'E', to: 'F', label: 'inherits' }
+            ]
+        };
         
-        let response = null;
-        let foundPath = null;
+        console.log('📊 Sample has', sample.nodes.length, 'nodes and', sample.edges.length, 'edges');
         
-        for (const path of paths) {
-            try {
-                console.log(`📂 Trying: ${path}`);
-                const testResponse = await fetch(path);
-                if (testResponse.ok) {
-                    response = testResponse;
-                    foundPath = path;
-                    console.log(`✅ Found at: ${path}`);
-                    break;
-                }
-            } catch (e) {
-                console.log(`❌ Failed: ${path}`, e.message);
-            }
-        }
+        const json = JSON.stringify(sample);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(json);
+        console.log('📦 Encoded data size:', data.length, 'bytes');
         
-        if (!response || !response.ok) {
-            console.warn('⚠️ sample.json not found, using hardcoded sample');
-            // Use hardcoded sample
-            const hardcodedSample = {
-                nodes: [
-                    { id: 'A', label: 'Class A', color: '#FF6B6B' },
-                    { id: 'B', label: 'Class B', color: '#4ECDC4' },
-                    { id: 'C', label: 'Class C', color: '#45B7D1' },
-                    { id: 'D', label: 'Class D', color: '#96CEB4' },
-                    { id: 'E', label: 'Class E', color: '#FFEAA7' },
-                    { id: 'F', label: 'Class F', color: '#DDA0DD' }
-                ],
-                edges: [
-                    { from: 'A', to: 'B', label: 'extends' },
-                    { from: 'A', to: 'C', label: 'implements' },
-                    { from: 'B', to: 'D', label: 'uses' },
-                    { from: 'C', to: 'D', label: 'uses' },
-                    { from: 'C', to: 'E', label: 'contains' },
-                    { from: 'D', to: 'F', label: 'depends' },
-                    { from: 'E', to: 'F', label: 'inherits' }
-                ]
-            };
-            const json = JSON.stringify(hardcodedSample);
-            const encoder = new TextEncoder();
-            const data = encoder.encode(json);
-            await loadFile(data, 'sample.json');
-            showToast('✅ Loaded hardcoded sample', 'success');
-            return;
-        }
-        
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
-        console.log(`📦 Sample data loaded, ${data.length} bytes`);
-        await loadFile(data, 'sample.json');
-        showToast(`✅ Loaded ${foundPath}`, 'success');
+        console.log('📤 Calling loadFile()...');
+        loadFile(data, 'sample.json');
+        console.log('✅ loadFile() called successfully');
         
     } catch (error) {
-        console.error('❌ Sample load error:', error);
-        showToast(`Sample error: ${error.message}`, 'error');
-        setStatus(`Error: ${error.message}`);
+        console.error('❌ loadSample error:', error.message);
+        console.error('Stack:', error.stack);
+        showToast('Sample error: ' + error.message, 'error');
+        setStatus('Error: ' + error.message);
     }
 }
 
