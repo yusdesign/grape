@@ -1,9 +1,11 @@
-// --- DEBUG CONSOLE (shows logs on screen) ---
+// ============================================================
+// DEBUG CONSOLE - Shows logs on screen (triple-tap status bar)
+// ============================================================
 (function setupDebugConsole() {
     const debugEl = document.getElementById('debugConsole');
     let isVisible = false;
     
-    // Toggle with triple-tap on status bar
+    // Wait for DOM to load
     document.addEventListener('DOMContentLoaded', () => {
         const status = document.getElementById('status');
         if (status) {
@@ -18,7 +20,8 @@
                         debugEl.style.display = isVisible ? 'block' : 'none';
                         if (isVisible) {
                             addDebugLog('🐛 Debug console enabled', 'success');
-                            addDebugLog('📱 Platform: ' + Capacitor.getPlatform(), 'info');
+                            addDebugLog('📱 Platform: ' + (window.Capacitor ? Capacitor.getPlatform() : 'web'), 'info');
+                            addDebugLog('💡 Tap buttons to see logs', 'info');
                         }
                         tapCount = 0;
                     } else {
@@ -70,7 +73,7 @@
         origInfo.apply(console, args);
     };
     
-    // Add a manual debug function
+    // Add manual debug function
     window.debug = function(msg) {
         addDebugLog(msg, 'debug');
     };
@@ -81,7 +84,7 @@
         return false;
     };
     
-    // Make it globally accessible
+    // Global toggle
     window.toggleDebug = function() {
         isVisible = !isVisible;
         debugEl.style.display = isVisible ? 'block' : 'none';
@@ -93,13 +96,18 @@
     console.log('🐛 Debug console ready - triple-tap status bar to toggle');
 })();
 
-// --- Imports ---
-import { FilePicker } from '@capawesome/capacitor-file-picker';
-import { FileOpener } from '@capawesome-team/capacitor-file-opener';
+// ============================================================
+// IMPORTS
+// ============================================================
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { AssetManager, Encoding } from '@capawesome/capacitor-asset-manager';
 import { DataSet, Network } from 'vis-network';
 
-// --- DOM Elements ---
+// ============================================================
+// DOM ELEMENTS
+// ============================================================
 const container = document.getElementById('graphContainer');
 const statusEl = document.getElementById('status');
 const nodeCountEl = document.getElementById('nodeCount');
@@ -107,17 +115,24 @@ const openBtn = document.getElementById('openFileBtn');
 const sampleBtn = document.getElementById('sampleFileBtn');
 const exportBtn = document.getElementById('exportBtn');
 const resetBtn = document.getElementById('resetViewBtn');
+const shareBtn = document.getElementById('shareBtn');
+const fileInput = document.getElementById('fileInput');
 const contextMenu = document.getElementById('contextMenu');
 const contextContent = document.getElementById('contextMenuContent');
 
-// --- State ---
+// ============================================================
+// STATE
+// ============================================================
 let network = null;
 let nodes = null;
 let edges = null;
 let currentFile = null;
 let graphData = null;
+let currentFilePath = null;
 
-// --- Toast System ---
+// ============================================================
+// TOAST SYSTEM
+// ============================================================
 function showToast(message, type = 'info') {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
@@ -134,7 +149,9 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// --- Status Update ---
+// ============================================================
+// STATUS UPDATE
+// ============================================================
 function setStatus(message, isLoading = false) {
     if (isLoading) {
         statusEl.innerHTML = `<span class="loading"></span> ${message}`;
@@ -143,98 +160,79 @@ function setStatus(message, isLoading = false) {
     }
 }
 
-// --- 1. FILE LOADING ---
+// ============================================================
+// 1. FILE LOADING
+// ============================================================
 async function loadFile(fileData, filename) {
+    console.log('📤 loadFile() called for:', filename);
     try {
         setStatus('Loading file...', true);
         
         const content = new TextDecoder('utf-8').decode(fileData);
+        console.log('📄 Content preview:', content.substring(0, 100) + '...');
         currentFile = filename;
         
         setStatus(`Parsing ${filename}...`, true);
         const parsed = parseContent(content, filename);
         
-        if (parsed) {
+        if (parsed && parsed.nodes && parsed.edges) {
+            console.log('📊 Parsed:', parsed.nodes.length, 'nodes,', parsed.edges.length, 'edges');
             graphData = parsed;
             renderGraph(parsed);
-            setStatus(`Loaded: ${filename} (${parsed.nodes.length} nodes, ${parsed.edges.length} edges)`);
+            setStatus(`✅ Loaded: ${filename} (${parsed.nodes.length} nodes, ${parsed.edges.length} edges)`);
             showToast(`✅ Loaded ${filename}`, 'success');
+        } else {
+            throw new Error('Invalid graph data: missing nodes or edges');
         }
     } catch (error) {
-        console.error('Load error:', error);
+        console.error('❌ Load error:', error.message);
+        console.error('Stack:', error.stack);
         setStatus(`❌ Error: ${error.message}`);
         showToast(`Error: ${error.message}`, 'error');
     }
 }
 
-// --- 2. FILE PICKER (with debug logs) ---
+// ============================================================
+// 2. FILE PICKER (Native file input - free, works everywhere)
+// ============================================================
 async function openFilePicker() {
     console.log('📂 openFilePicker() called');
-    try {
-        setStatus('Opening file picker...', true);
-        console.log('📱 Platform:', Capacitor.getPlatform());
-        
-        console.log('🔍 Checking FilePicker availability...');
-        if (typeof FilePicker === 'undefined') {
-            console.error('❌ FilePicker is undefined!');
-            showToast('FilePicker plugin not loaded!', 'error');
-            return;
-        }
-        console.log('✅ FilePicker is available');
-        
-        console.log('📤 Calling FilePicker.pickFiles()...');
-        const result = await FilePicker.pickFiles({
-            types: ['application/json', 'text/xml', 'text/html', 'image/svg+xml', 'text/plain'],
-            limit: 1,
-            readData: false
-        });
-
-        console.log('📄 FilePicker result:', result);
-
-        if (result.files && result.files.length > 0) {
-            const file = result.files[0];
-            console.log('📄 Selected file:', file.name, 'Size:', file.size);
-            
-            let fileData;
-            if (Capacitor.isNativePlatform()) {
-                const fileUrl = Capacitor.convertFileSrc(file.path);
-                console.log('🔗 File URL:', fileUrl);
-                
-                const response = await fetch(fileUrl);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch file: ${response.status}`);
-                }
-                const blob = await response.blob();
-                const arrayBuffer = await blob.arrayBuffer();
-                fileData = new Uint8Array(arrayBuffer);
-                console.log('📦 File loaded,', fileData.length, 'bytes');
-            } else {
-                const arrayBuffer = await file.blob.arrayBuffer();
-                fileData = new Uint8Array(arrayBuffer);
-            }
-            
-            await loadFile(fileData, file.name);
-        } else {
-            console.log('No files selected');
-            setStatus('No file selected');
-            showToast('No file selected', 'info');
-        }
-    } catch (error) {
-        console.error('❌ File picker error:', error.message);
-        console.error('Stack:', error.stack);
-        if (!error.message?.includes('cancel')) {
-            showToast('Picker error: ' + error.message, 'error');
-            setStatus('Error: ' + error.message);
-        } else {
-            setStatus('Cancelled');
-            showToast('Cancelled', 'info');
-        }
-    }
+    fileInput.click();
 }
 
-// --- 3. PARSERS ---
+fileInput.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    console.log('📄 Selected file:', file.name, 'Size:', file.size);
+    setStatus(`Loading ${file.name}...`, true);
+    
+    try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const content = e.target.result;
+            console.log('📦 File loaded, size:', content.length);
+            const encoder = new TextEncoder();
+            const data = encoder.encode(content);
+            await loadFile(data, file.name);
+        };
+        reader.readAsText(file);
+    } catch (error) {
+        console.error('❌ File read error:', error.message);
+        showToast('File read error: ' + error.message, 'error');
+        setStatus('Error: ' + error.message);
+    }
+    
+    // Reset input so same file can be loaded again
+    fileInput.value = '';
+});
+
+// ============================================================
+// 3. PARSERS
+// ============================================================
 function parseContent(content, filename) {
     const ext = filename.split('.').pop().toLowerCase();
+    console.log('🔍 Parsing extension:', ext);
     
     try {
         switch(ext) {
@@ -259,8 +257,8 @@ function parseContent(content, filename) {
 
 function parseJSON(jsonStr) {
     const data = JSON.parse(jsonStr);
+    console.log('📊 JSON parsed, keys:', Object.keys(data));
     
-    // Expected: { nodes: [{id, label}], edges: [{from, to}] }
     if (data.nodes && data.edges) {
         return {
             nodes: data.nodes.map(n => ({ ...n, id: n.id || n.label })),
@@ -279,11 +277,9 @@ function parseJSON(jsonStr) {
                 nodeMap.set(key, { id: key, label: key });
                 nodes.push(nodeMap.get(key));
             }
-            
             if (parentKey) {
                 edges.push({ from: parentKey, to: key });
             }
-            
             if (typeof value === 'object' && value !== null) {
                 traverse(value, key);
             }
@@ -395,26 +391,31 @@ function parseText(txtStr) {
     return { nodes, edges };
 }
 
-// --- 4. RENDERER ---
+// ============================================================
+// 4. RENDERER
+// ============================================================
 function renderGraph(data) {
+    console.log('🎨 renderGraph() called with', data.nodes.length, 'nodes');
+    
     const styledNodes = data.nodes.map(n => ({
         ...n,
         shape: 'dot',
         size: 25,
-        font: { size: 14, face: 'Arial', color: '#1a2332' },
+        font: { size: 14, face: 'Arial', color: '#e6edf3' },
         color: {
-            background: '#97C2FC',
-            border: '#2B7CE9',
-            highlight: { background: '#D2E5FF', border: '#2B7CE9' }
+            background: '#58a6ff',
+            border: '#1f6feb',
+            highlight: { background: '#79c0ff', border: '#58a6ff' }
         },
-        borderWidth: 2
+        borderWidth: 2,
+        shadow: true
     }));
     
     const styledEdges = data.edges.map(e => ({
         ...e,
         arrows: 'to',
         smooth: { type: 'curvedCW', roundness: 0.2 },
-        color: { color: '#848484', highlight: '#2B7CE9' },
+        color: { color: '#484f58', highlight: '#58a6ff' },
         width: 1.5
     }));
     
@@ -425,7 +426,7 @@ function renderGraph(data) {
         nodes: {
             shape: 'dot',
             size: 25,
-            font: { size: 14, face: 'Arial', color: '#1a2332' },
+            font: { size: 14, face: 'Arial', color: '#e6edf3' },
             borderWidth: 2,
             shadow: true
         },
@@ -433,7 +434,7 @@ function renderGraph(data) {
             arrows: 'to',
             smooth: { type: 'curvedCW', roundness: 0.2 },
             width: 1.5,
-            color: { color: '#848484', highlight: '#2B7CE9' }
+            color: { color: '#484f58', highlight: '#58a6ff' }
         },
         physics: {
             enabled: true,
@@ -467,6 +468,7 @@ function renderGraph(data) {
     }
     
     network = new Network(container, { nodes, edges }, options);
+    console.log('✅ Network created');
     
     // Events
     network.on('doubleClick', function(params) {
@@ -490,20 +492,24 @@ function renderGraph(data) {
     
     // Update node count
     nodeCountEl.textContent = `${data.nodes.length} nodes, ${data.edges.length} edges`;
+    console.log('📊 Node count updated');
     
     // Auto-fit after stabilization
     setTimeout(() => {
         network.fit();
+        console.log('🔍 Network fit');
     }, 500);
 }
 
-// --- 5. CONTEXT MENU ---
+// ============================================================
+// 5. CONTEXT MENU
+// ============================================================
 function showContextMenu(x, y, node) {
     contextContent.innerHTML = `
         <div style="font-weight:bold;margin-bottom:8px;">${node.label}</div>
-        <div style="font-size:12px;color:#666;margin-bottom:8px;">ID: ${node.id}</div>
-        <button onclick="window.copyNodeId('${node.id}')" style="width:100%;padding:4px;background:#3498db;color:white;border:none;border-radius:4px;cursor:pointer;">Copy ID</button>
-        <button onclick="window.focusNode('${node.id}')" style="width:100%;margin-top:4px;padding:4px;background:#2ecc71;color:white;border:none;border-radius:4px;cursor:pointer;">Focus</button>
+        <div style="font-size:12px;color:#8b949e;margin-bottom:8px;">ID: ${node.id}</div>
+        <button onclick="window.copyNodeId('${node.id}')" style="width:100%;padding:4px;background:#58a6ff;color:#fff;border:none;border-radius:4px;cursor:pointer;">Copy ID</button>
+        <button onclick="window.focusNode('${node.id}')" style="width:100%;margin-top:4px;padding:4px;background:#3fb950;color:#fff;border:none;border-radius:4px;cursor:pointer;">Focus</button>
     `;
     
     contextMenu.style.display = 'block';
@@ -524,8 +530,10 @@ window.focusNode = function(id) {
     }
 };
 
-// --- 6. SAMPLE DATA (with debug logs) ---
-function loadSample() {
+// ============================================================
+// 6. SAMPLE DATA (Using Asset Manager on native, fetch on web)
+// ============================================================
+async function loadSample() {
     console.log('🔍 loadSample() called');
     console.log('📱 Platform:', Capacitor.getPlatform());
     console.log('📱 Is native:', Capacitor.isNativePlatform());
@@ -534,48 +542,72 @@ function loadSample() {
         setStatus('Loading sample...', true);
         showToast('Loading sample...', 'info');
         
-        console.log('📦 Creating hardcoded sample data...');
-        const sample = {
-            nodes: [
-                { id: 'A', label: 'Class A', color: '#FF6B6B' },
-                { id: 'B', label: 'Class B', color: '#4ECDC4' },
-                { id: 'C', label: 'Class C', color: '#45B7D1' },
-                { id: 'D', label: 'Class D', color: '#96CEB4' },
-                { id: 'E', label: 'Class E', color: '#FFEAA7' },
-                { id: 'F', label: 'Class F', color: '#DDA0DD' }
-            ],
-            edges: [
-                { from: 'A', to: 'B', label: 'extends' },
-                { from: 'A', to: 'C', label: 'implements' },
-                { from: 'B', to: 'D', label: 'uses' },
-                { from: 'C', to: 'D', label: 'uses' },
-                { from: 'C', to: 'E', label: 'contains' },
-                { from: 'D', to: 'F', label: 'depends' },
-                { from: 'E', to: 'F', label: 'inherits' }
-            ]
-        };
+        let content;
         
-        console.log('📊 Sample has', sample.nodes.length, 'nodes and', sample.edges.length, 'edges');
+        if (Capacitor.isNativePlatform()) {
+            // Use Asset Manager to read bundled sample.json
+            console.log('📦 Reading sample from app bundle using Asset Manager...');
+            try {
+                const { data } = await AssetManager.read({
+                    path: 'public/sample.json',
+                    encoding: Encoding.Utf8
+                });
+                content = data;
+                console.log('✅ Asset Manager read successful, size:', content.length);
+            } catch (assetError) {
+                console.warn('⚠️ Asset Manager failed, trying fallback:', assetError.message);
+                // Fallback: use hardcoded sample
+                content = JSON.stringify({
+                    nodes: [
+                        { id: 'A', label: 'Class A', color: '#FF6B6B' },
+                        { id: 'B', label: 'Class B', color: '#4ECDC4' },
+                        { id: 'C', label: 'Class C', color: '#45B7D1' },
+                        { id: 'D', label: 'Class D', color: '#96CEB4' },
+                        { id: 'E', label: 'Class E', color: '#FFEAA7' },
+                        { id: 'F', label: 'Class F', color: '#DDA0DD' }
+                    ],
+                    edges: [
+                        { from: 'A', to: 'B', label: 'extends' },
+                        { from: 'A', to: 'C', label: 'implements' },
+                        { from: 'B', to: 'D', label: 'uses' },
+                        { from: 'C', to: 'D', label: 'uses' },
+                        { from: 'C', to: 'E', label: 'contains' },
+                        { from: 'D', to: 'F', label: 'depends' },
+                        { from: 'E', to: 'F', label: 'inherits' }
+                    ]
+                });
+                console.log('📦 Using hardcoded sample fallback');
+            }
+        } else {
+            // Web: fetch from server
+            console.log('🌐 Loading sample from web...');
+            const response = await fetch('sample.json');
+            if (!response.ok) {
+                throw new Error('sample.json not found, using hardcoded');
+            }
+            content = await response.text();
+            console.log('✅ Web fetch successful, size:', content.length);
+        }
         
-        const json = JSON.stringify(sample);
         const encoder = new TextEncoder();
-        const data = encoder.encode(json);
-        console.log('📦 Encoded data size:', data.length, 'bytes');
-        
-        console.log('📤 Calling loadFile()...');
-        loadFile(data, 'sample.json');
-        console.log('✅ loadFile() called successfully');
+        const data = encoder.encode(content);
+        await loadFile(data, 'sample.json');
+        showToast('✅ Sample loaded', 'success');
         
     } catch (error) {
-        console.error('❌ loadSample error:', error.message);
+        console.error('❌ Sample load error:', error.message);
         console.error('Stack:', error.stack);
         showToast('Sample error: ' + error.message, 'error');
         setStatus('Error: ' + error.message);
     }
 }
 
-// --- 7. EXPORT (Updated for Capacitor 8) ---
+// ============================================================
+// 7. EXPORT (Using Capacitor Filesystem - free)
+// ============================================================
 async function exportGraph() {
+    console.log('💾 exportGraph() called');
+    
     if (!network) {
         showToast('No graph to export', 'error');
         return;
@@ -590,11 +622,24 @@ async function exportGraph() {
         };
         
         const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
         const filename = `graph_${new Date().toISOString().slice(0,10)}.json`;
+        console.log('📦 Export data size:', json.length);
         
-        // For Web, use download link
-        if (!Capacitor.isNativePlatform()) {
+        if (Capacitor.isNativePlatform()) {
+            console.log('📱 Saving to device...');
+            await Filesystem.writeFile({
+                path: filename,
+                data: json,
+                directory: Directory.Documents,
+                encoding: 'utf8'
+            });
+            currentFilePath = filename;
+            showToast(`✅ Saved to Documents/${filename}`, 'success');
+            setStatus(`Exported: ${filename}`);
+            console.log('✅ Saved to:', filename);
+        } else {
+            console.log('🌐 Downloading via browser...');
+            const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -602,55 +647,93 @@ async function exportGraph() {
             a.click();
             URL.revokeObjectURL(url);
             showToast('✅ Graph downloaded', 'success');
-            return;
+            console.log('✅ Download triggered');
         }
-        
-        // For native, use FileOpener to save
-        // First, we need to save the file to a temporary location
-        const tempPath = `${Capacitor.getFilesDirectory()}${filename}`;
-        // You'd need to use Filesystem plugin here, or implement a save dialog
-        showToast('Native export: Use Filesystem plugin', 'info');
-        
     } catch (error) {
+        console.error('❌ Export error:', error.message);
+        console.error('Stack:', error.stack);
         showToast(`Export failed: ${error.message}`, 'error');
     }
 }
 
-// --- 8. RESET VIEW ---
-function resetView() {
-    if (network) {
-        network.fit({ animation: true });
-        showToast('View reset', 'info');
+// ============================================================
+// 8. SHARE (Using Capacitor Share - free)
+// ============================================================
+async function shareGraph() {
+    console.log('📤 shareGraph() called');
+    
+    if (!network) {
+        showToast('No graph to share', 'error');
+        return;
+    }
+    
+    try {
+        const data = {
+            nodes: nodes.get(),
+            edges: edges.get(),
+            exportedAt: new Date().toISOString(),
+            sourceFile: currentFile || 'unknown'
+        };
+        
+        const json = JSON.stringify(data, null, 2);
+        
+        if (Capacitor.isNativePlatform()) {
+            console.log('📱 Sharing via Share plugin...');
+            await Share.share({
+                title: 'Graph Data',
+                text: json,
+                dialogTitle: 'Share graph data'
+            });
+            showToast('✅ Shared!', 'success');
+            console.log('✅ Share completed');
+        } else {
+            console.log('🌐 Web share fallback...');
+            // Web fallback: copy to clipboard
+            await navigator.clipboard.writeText(json);
+            showToast('📋 Graph data copied to clipboard', 'success');
+            console.log('✅ Copied to clipboard');
+        }
+    } catch (error) {
+        console.error('❌ Share error:', error.message);
+        showToast(`Share failed: ${error.message}`, 'error');
     }
 }
 
-// --- 9. EVENT LISTENERS ---
+// ============================================================
+// 9. RESET VIEW
+// ============================================================
+function resetView() {
+    console.log('🔄 resetView() called');
+    if (network) {
+        network.fit({ animation: true });
+        showToast('View reset', 'info');
+        console.log('✅ View reset');
+    }
+}
+
+// ============================================================
+// 10. EVENT LISTENERS
+// ============================================================
 openBtn.addEventListener('click', openFilePicker);
 sampleBtn.addEventListener('click', loadSample);
 exportBtn.addEventListener('click', exportGraph);
 resetBtn.addEventListener('click', resetView);
+if (shareBtn) shareBtn.addEventListener('click', shareGraph);
 
 // Click outside context menu to close
 document.addEventListener('click', () => {
     contextMenu.style.display = 'none';
 });
 
-// --- 10. INIT ---
+// ============================================================
+// 11. INIT
+// ============================================================
+console.log('🚀 Grape app starting...');
+console.log('📱 Platform:', Capacitor.getPlatform());
+console.log('📱 Is native:', Capacitor.isNativePlatform());
 setStatus('Ready - Open a file or load sample');
 showToast('🚀 Graph Viewer Ready', 'info');
 
-// --- 11. OPEN FILE WITH DEFAULT APP (Using File Opener) ---
-async function openWithDefaultApp(filePath) {
-    try {
-        await FileOpener.openFile({
-            path: filePath,
-            // mimeType: 'application/json' // Optional: specify MIME type
-        });
-        showToast('Opening file...', 'success');
-    } catch (error) {
-        showToast(`Failed to open: ${error.message}`, 'error');
-    }
-}
-
 // Auto-load sample for testing
-loadSample(); // Comment to disable
+console.log('📦 Auto-loading sample...');
+loadSample();
