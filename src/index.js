@@ -1,3 +1,24 @@
+// ⭐ IMMEDIATE STARTUP CHECK
+console.log('🚀 INDEX.JS LOADED');
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM Content Loaded');
+    const startupCheck = document.getElementById('startupCheck');
+    if (startupCheck) {
+        startupCheck.style.display = 'none';
+        console.log('✅ Startup check passed');
+    }
+});
+
+// ⭐ Force show debug if hidden
+setTimeout(() => {
+    const debugEl = document.getElementById('debugConsole');
+    if (debugEl) {
+        debugEl.style.display = 'block';
+        debugEl.innerHTML = '<div style="color:#0f0;">🐛 DEBUG CONSOLE FORCED OPEN</div>';
+        console.log('🐛 Debug console forced open');
+    }
+}, 1000);
+
 // ============================================================
 // DEBUG CONSOLE - Shows logs on screen (triple-tap status bar)
 // ============================================================
