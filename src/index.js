@@ -71,10 +71,16 @@ async function loadFile(fileData, filename) {
     }
 }
 
-// --- 2. FILE PICKER (Updated for Capacitor 8) ---
+// --- 2. FILE PICKER (with better error handling) ---
 async function openFilePicker() {
     try {
+        console.log('📂 Opening file picker...');
         setStatus('Opening file picker...', true);
+        
+        // Check if FilePicker is available
+        if (!FilePicker) {
+            throw new Error('FilePicker plugin not loaded');
+        }
         
         const result = await FilePicker.pickFiles({
             types: ['application/json', 'text/xml', 'text/html', 'image/svg+xml', 'text/plain'],
@@ -82,28 +88,47 @@ async function openFilePicker() {
             readData: false
         });
 
+        console.log('📄 FilePicker result:', result);
+
         if (result.files && result.files.length > 0) {
             const file = result.files[0];
+            console.log('📄 Selected file:', file.name
+, 'Path:', file.path, 'Size:', file.size);
             
             let fileData;
             if (Capacitor.isNativePlatform()) {
-                // Capacitor 8 uses convertFileSrc differently
+                // For Android, use the file path with convertFileSrc
                 const fileUrl = Capacitor.convertFileSrc(file.path);
+                console.log('🔗 File URL:', fileUrl);
+                
                 const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch file: ${response.status}`);
+                }
                 const blob = await response.blob();
                 const arrayBuffer = await blob.arrayBuffer();
                 fileData = new Uint8Array(arrayBuffer);
+                console.log(`📦 File loaded, ${fileData.length} bytes`);
             } else {
                 const arrayBuffer = await file.blob.arrayBuffer();
                 fileData = new Uint8Array(arrayBuffer);
             }
             
-            await loadFile(fileData, file.name);
+            await loadFile(fileData, file.name
+);
+        } else {
+            console.log('No files selected');
+            setStatus('No file selected');
+            showToast('No file selected', 'info');
         }
     } catch (error) {
+        console.error('❌ File picker error:', error);
         if (!error.message?.includes('cancel')) {
             showToast(`Picker error: ${error.message}`, 'error');
             setStatus(`Error: ${error.message}`);
+        } else {
+            setStatus('Cancelled');
+            showToast('Cancelled', 'info');
         }
     }
 }
@@ -400,32 +425,82 @@ window.focusNode = function(id) {
     }
 };
 
-// --- 6. SAMPLE DATA ---
-function loadSample() {
-    const sample = {
-        nodes: [
-            { id: 'A', label: 'Class A', color: '#FF6B6B' },
-            { id: 'B', label: 'Class B', color: '#4ECDC4' },
-            { id: 'C', label: 'Class C', color: '#45B7D1' },
-            { id: 'D', label: 'Class D', color: '#96CEB4' },
-            { id: 'E', label: 'Class E', color: '#FFEAA7' },
-            { id: 'F', label: 'Class F', color: '#DDA0DD' }
-        ],
-        edges: [
-            { from: 'A', to: 'B', label: 'extends' },
-            { from: 'A', to: 'C', label: 'implements' },
-            { from: 'B', to: 'D', label: 'uses' },
-            { from: 'C', to: 'D', label: 'uses' },
-            { from: 'C', to: 'E', label: 'contains' },
-            { from: 'D', to: 'F', label: 'depends' },
-            { from: 'E', to: 'F', label: 'inherits' }
-        ]
-    };
-    
-    const json = JSON.stringify(sample);
-    const encoder = new TextEncoder();
-    const data = encoder.encode(json);
-    loadFile(data, 'sample.json');
+// --- 6. SAMPLE DATA (Debug version with fallbacks) ---
+async function loadSample() {
+    try {
+        console.log('🔍 Loading sample data...');
+        setStatus('Loading sample...', true);
+        showToast('Loading sample...', 'info');
+        
+        // Try to fetch from multiple paths
+        const paths = [
+            'sample.json',
+            './sample.json',
+            '/sample.json',
+            'assets/sample.json',
+            './assets/sample.json'
+        ];
+        
+        let response = null;
+        let foundPath = null;
+        
+        for (const path of paths) {
+            try {
+                console.log(`📂 Trying: ${path}`);
+                const testResponse = await fetch(path);
+                if (testResponse.ok) {
+                    response = testResponse;
+                    foundPath = path;
+                    console.log(`✅ Found at: ${path}`);
+                    break;
+                }
+            } catch (e) {
+                console.log(`❌ Failed: ${path}`, e.message);
+            }
+        }
+        
+        if (!response || !response.ok) {
+            console.warn('⚠️ sample.json not found, using hardcoded sample');
+            // Use hardcoded sample
+            const hardcodedSample = {
+                nodes: [
+                    { id: 'A', label: 'Class A', color: '#FF6B6B' },
+                    { id: 'B', label: 'Class B', color: '#4ECDC4' },
+                    { id: 'C', label: 'Class C', color: '#45B7D1' },
+                    { id: 'D', label: 'Class D', color: '#96CEB4' },
+                    { id: 'E', label: 'Class E', color: '#FFEAA7' },
+                    { id: 'F', label: 'Class F', color: '#DDA0DD' }
+                ],
+                edges: [
+                    { from: 'A', to: 'B', label: 'extends' },
+                    { from: 'A', to: 'C', label: 'implements' },
+                    { from: 'B', to: 'D', label: 'uses' },
+                    { from: 'C', to: 'D', label: 'uses' },
+                    { from: 'C', to: 'E', label: 'contains' },
+                    { from: 'D', to: 'F', label: 'depends' },
+                    { from: 'E', to: 'F', label: 'inherits' }
+                ]
+            };
+            const json = JSON.stringify(hardcodedSample);
+            const encoder = new TextEncoder();
+            const data = encoder.encode(json);
+            await loadFile(data, 'sample.json');
+            showToast('✅ Loaded hardcoded sample', 'success');
+            return;
+        }
+        
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        console.log(`📦 Sample data loaded, ${data.length} bytes`);
+        await loadFile(data, 'sample.json');
+        showToast(`✅ Loaded ${foundPath}`, 'success');
+        
+    } catch (error) {
+        console.error('❌ Sample load error:', error);
+        showToast(`Sample error: ${error.message}`, 'error');
+        setStatus(`Error: ${error.message}`);
+    }
 }
 
 // --- 7. EXPORT (Updated for Capacitor 8) ---

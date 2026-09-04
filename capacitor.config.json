@@ -12,7 +12,8 @@
       "keystoreAlias": "key0",
       "keystorePassword": "${KEYSTORE_PASSWORD}",
       "keyPassword": "${KEY_PASSWORD}"
-    }
+    },
+    "webContentsDebuggingEnabled": true
   },
   "plugins": {
     "FileAccess": {
