@@ -45,9 +45,21 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Fix and install dependencies
         run: |
-          npm ci --no-audit --no-fund
+          # Remove broken lock file
+          rm -f package-lock.json
+          
+          # Generate new lock file
+          npm install --package-lock-only
+          
+          # Install dependencies (with fallback to install if ci fails)
+          if ! npm ci --no-audit --no-fund; then
+            echo "⚠️ npm ci failed, using npm install..."
+            npm install --no-audit --no-fund
+          fi
+          
+          # Install Capacitor CLI globally
           npm install -g @capacitor/cli
       
       - name: Setup Java
@@ -120,7 +132,6 @@ jobs:
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   
-                  // Enable WebView debugging
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                       WebView.setWebContentsDebuggingEnabled(true);
                   }
