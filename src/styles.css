@@ -67,10 +67,6 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-#toolbar button:active {
-    transform: translateY(0);
-}
-
 #toolbar button#openFileBtn {
     background: var(--accent-blue);
     border-color: var(--accent-blue);
@@ -115,6 +111,17 @@ body {
     color: var(--text-primary);
 }
 
+#toolbar button#shareBtn {
+    background: var(--accent-purple);
+    border-color: var(--accent-purple);
+    color: #fff;
+}
+
+#toolbar button#shareBtn:hover {
+    background: #a371f7;
+    border-color: #a371f7;
+}
+
 #status {
     flex: 1;
     font-size: 13px;
@@ -135,7 +142,7 @@ body {
     white-space: nowrap;
 }
 
-/* --- Graph Container (Dark background) --- */
+/* --- Graph Container --- */
 #graphContainer {
     width: 100%;
     height: calc(100vh - 56px);
@@ -143,7 +150,6 @@ body {
     position: relative;
 }
 
-/* --- Force vis-network dark background --- */
 .vis-network {
     background: var(--bg-primary) !important;
 }
@@ -164,152 +170,4 @@ body {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    min-width: 150px;
-}
-
-#contextMenuContent {
-    color: var(--text-primary);
-}
-
-#contextMenuContent button {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 4px;
-    font-size: 12px;
-}
-
-#contextMenuContent button:hover {
-    background: var(--bg-toolbar);
-    border-color: var(--accent-blue);
-}
-
-/* --- Toast --- */
-.toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--toast-bg);
-    color: var(--text-primary);
-    padding: 10px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-.toast.show {
-    opacity: 1;
-}
-
-.toast.error {
-    background: rgba(248, 81, 73, 0.2);
-    border-color: var(--accent-red);
-    color: var(--accent-red);
-}
-
-.toast.success {
-    background: rgba(63, 185, 80, 0.2);
-    border-color: var(--accent-green);
-    color: var(--accent-green);
-}
-
-.toast.info {
-    background: rgba(88, 166, 255, 0.2);
-    border-color: var(--accent-blue);
-    color: var(--accent-blue);
-}
-
-/* --- Loading Spinner --- */
-.loading {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--accent-blue);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* --- Mobile Responsive --- */
-@media (max-width: 640px) {
-    #toolbar {
-        padding: 8px 10px;
-        gap: 6px;
-        height: auto;
-        min-height: 48px;
-    }
-    
-    #toolbar button {
-        font-size: 11px;
-        padding: 4px 10px;
-    }
-    
-    #status {
-        font-size: 11px;
-        min-width: 60px;
-        order: 10;
-        width: 100%;
-        margin-top: 4px;
-    }
-    
-    #nodeCount {
-        font-size: 10px;
-        padding: 1px 8px;
-    }
-}
-
-/* --- Debug Container --- */
-#debugConsole {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 200px;
-    background: rgba(0, 0, 0, 0.95);
-    color: #0f0;
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    padding: 8px 12px;
-    overflow-y: auto;
-    z-index: 9999;
-    display: none;
-    border-top: 2px solid #0f0;
-    line-height: 1.6;
-}
-
-#debugConsole .log-error { color: #ff4444; }
-#debugConsole .log-warn { color: #ffaa00; }
-#debugConsole .log-info { color: #44aaff; }
-#debugConsole .log-success { color: #44ff88; }
-#debugConsole .log-debug { color: #888888; }
-
-/* Scrollbar for debug console */
-#debugConsole::-webkit-scrollbar {
-    width: 4px;
-}
-#debugConsole::-webkit-scrollbar-track {
-    background: #111;
-}
-#debugConsole::-webkit-scrollbar-thumb {
-    background: #444;
-    border-radius: 2px;
-}
+    padding: 
