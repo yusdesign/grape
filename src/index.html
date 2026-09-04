@@ -12,9 +12,13 @@
         <button id="sampleFileBtn">📄 Load Sample</button>
         <button id="exportBtn">💾 Export Graph</button>
         <button id="resetViewBtn">🔄 Reset View</button>
+        <button id="shareBtn">📤 Share</button>
         <span id="status">Ready</span>
         <span id="nodeCount"></span>
     </div>
+    
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept=".json,.xml,.html,.svg,.txt" style="display:none">
     
     <div id="graphContainer"></div>
     
@@ -22,7 +26,7 @@
         <div id="contextMenuContent"></div>
     </div>
     
-    <!-- Debug Console - shows logs on screen -->
+    <!-- Debug Console -->
     <div id="debugConsole"></div>
     
     <script type="module" src="index.js"></script>
