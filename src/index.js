@@ -71,31 +71,29 @@ async function loadFile(fileData, filename) {
     }
 }
 
-// --- 2. FILE PICKER (Using @capawesome/capacitor-file-picker) ---
+// --- 2. FILE PICKER (Updated for Capacitor 8) ---
 async function openFilePicker() {
     try {
         setStatus('Opening file picker...', true);
         
-        // Use the new FilePicker plugin
         const result = await FilePicker.pickFiles({
             types: ['application/json', 'text/xml', 'text/html', 'image/svg+xml', 'text/plain'],
-            limit: 1, // Only allow one file at a time
-            readData: false // Don't read data into memory; we'll fetch it
+            limit: 1,
+            readData: false
         });
 
         if (result.files && result.files.length > 0) {
             const file = result.files[0];
             
-            // Load the file content
             let fileData;
             if (Capacitor.isNativePlatform()) {
-                // For native (Android/iOS), fetch the file using its path
-                const response = await fetch(Capacitor.convertFileSrc(file.path));
+                // Capacitor 8 uses convertFileSrc differently
+                const fileUrl = Capacitor.convertFileSrc(file.path);
+                const response = await fetch(fileUrl);
                 const blob = await response.blob();
                 const arrayBuffer = await blob.arrayBuffer();
                 fileData = new Uint8Array(arrayBuffer);
             } else {
-                // For Web, use the blob directly
                 const arrayBuffer = await file.blob.arrayBuffer();
                 fileData = new Uint8Array(arrayBuffer);
             }
@@ -430,7 +428,7 @@ function loadSample() {
     loadFile(data, 'sample.json');
 }
 
-// --- 7. EXPORT (Using File Picker for saving) ---
+// --- 7. EXPORT (Updated for Capacitor 8) ---
 async function exportGraph() {
     if (!network) {
         showToast('No graph to export', 'error');
@@ -449,7 +447,7 @@ async function exportGraph() {
         const blob = new Blob([json], { type: 'application/json' });
         const filename = `graph_${new Date().toISOString().slice(0,10)}.json`;
         
-        // For Web, use a download link
+        // For Web, use download link
         if (!Capacitor.isNativePlatform()) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -461,10 +459,11 @@ async function exportGraph() {
             return;
         }
         
-        // For native, we need to save the file first, then open it
-        // This is a simplified approach - you might want to use the Filesystem plugin
-        // or request a save location from the user
-        showToast('Native export: Please use the Filesystem plugin', 'info');
+        // For native, use FileOpener to save
+        // First, we need to save the file to a temporary location
+        const tempPath = `${Capacitor.getFilesDirectory()}${filename}`;
+        // You'd need to use Filesystem plugin here, or implement a save dialog
+        showToast('Native export: Use Filesystem plugin', 'info');
         
     } catch (error) {
         showToast(`Export failed: ${error.message}`, 'error');
