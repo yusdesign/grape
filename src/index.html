@@ -34,5 +34,18 @@
     <div id="debugConsole"></div>
     
     <script type="module" src="index.js"></script>
+    <!-- In index.html, right after the module script -->
+    <script>
+        console.log('📜 Inline script running');
+        document.getElementById('startupCheck').style.display = 'none';
+        document.getElementById('startupCheck').textContent = '✅ JavaScript loaded!';
+        document.getElementById('startupCheck').style.background = 'green';
+        document.getElementById('startupCheck').style.display = 'block';
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            document.getElementById('startupCheck').style.display = 'none';
+        }, 3000);
+    </script>
 </body>
 </html>
