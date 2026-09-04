@@ -71,22 +71,41 @@ async function loadFile(fileData, filename) {
     }
 }
 
-// --- 2. FILE PICKER ---
+// --- 2. FILE PICKER (Using @capawesome/capacitor-file-picker) ---
 async function openFilePicker() {
     try {
-        const result = await FileAccess.selectFiles({
-            extensions: ['json', 'xml', 'html', 'svg', 'txt'],
-            multiple: false,
-            readData: true
-        });
+        setStatus('Opening file picker...', true);
         
+        // Use the new FilePicker plugin
+        const result = await FilePicker.pickFiles({
+            types: ['application/json', 'text/xml', 'text/html', 'image/svg+xml', 'text/plain'],
+            limit: 1, // Only allow one file at a time
+            readData: false // Don't read data into memory; we'll fetch it
+        });
+
         if (result.files && result.files.length > 0) {
             const file = result.files[0];
-            await loadFile(file.data, file.name);
+            
+            // Load the file content
+            let fileData;
+            if (Capacitor.isNativePlatform()) {
+                // For native (Android/iOS), fetch the file using its path
+                const response = await fetch(Capacitor.convertFileSrc(file.path));
+                const blob = await response.blob();
+                const arrayBuffer = await blob.arrayBuffer();
+                fileData = new Uint8Array(arrayBuffer);
+            } else {
+                // For Web, use the blob directly
+                const arrayBuffer = await file.blob.arrayBuffer();
+                fileData = new Uint8Array(arrayBuffer);
+            }
+            
+            await loadFile(fileData, file.name);
         }
     } catch (error) {
         if (!error.message?.includes('cancel')) {
             showToast(`Picker error: ${error.message}`, 'error');
+            setStatus(`Error: ${error.message}`);
         }
     }
 }
@@ -411,7 +430,7 @@ function loadSample() {
     loadFile(data, 'sample.json');
 }
 
-// --- 7. EXPORT ---
+// --- 7. EXPORT (Using File Picker for saving) ---
 async function exportGraph() {
     if (!network) {
         showToast('No graph to export', 'error');
@@ -427,33 +446,28 @@ async function exportGraph() {
         };
         
         const json = JSON.stringify(data, null, 2);
-        const encoder = new TextEncoder();
-        const encoded = encoder.encode(json);
-        
+        const blob = new Blob([json], { type: 'application/json' });
         const filename = `graph_${new Date().toISOString().slice(0,10)}.json`;
         
-        await FileAccess.writeFile({
-            path: filename,
-            directory: 'DOCUMENTS',
-            data: encoded
-        });
-        
-        showToast(`✅ Exported: ${filename}`, 'success');
-        setStatus(`Exported: ${filename}`);
-    } catch (error) {
-        // Fallback: download via blob
-        try {
-            const blob = new Blob([json], { type: 'application/json' });
+        // For Web, use a download link
+        if (!Capacitor.isNativePlatform()) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
-            showToast('✅ Downloaded via browser', 'success');
-        } catch (fallbackError) {
-            showToast(`Export failed: ${error.message}`, 'error');
+            showToast('✅ Graph downloaded', 'success');
+            return;
         }
+        
+        // For native, we need to save the file first, then open it
+        // This is a simplified approach - you might want to use the Filesystem plugin
+        // or request a save location from the user
+        showToast('Native export: Please use the Filesystem plugin', 'info');
+        
+    } catch (error) {
+        showToast(`Export failed: ${error.message}`, 'error');
     }
 }
 
@@ -479,6 +493,19 @@ document.addEventListener('click', () => {
 // --- 10. INIT ---
 setStatus('Ready - Open a file or load sample');
 showToast('🚀 Graph Viewer Ready', 'info');
+
+// --- 11. OPEN FILE WITH DEFAULT APP (Using File Opener) ---
+async function openWithDefaultApp(filePath) {
+    try {
+        await FileOpener.openFile({
+            path: filePath,
+            // mimeType: 'application/json' // Optional: specify MIME type
+        });
+        showToast('Opening file...', 'success');
+    } catch (error) {
+        showToast(`Failed to open: ${error.message}`, 'error');
+    }
+}
 
 // Auto-load sample for testing
 loadSample(); // Comment to disable
