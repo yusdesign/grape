@@ -18,7 +18,7 @@ jobs:
     name: Build APK
     runs-on: ubuntu-latest
     outputs:
-      release_ready: ${{ steps.check_tag.outputs.release_ready }}
+      release_ready: ${{ steps.get_version.outputs.release_ready }}
       version: ${{ steps.get_version.outputs.version }}
     
     steps:
@@ -56,11 +56,9 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
       
-      # ⭐ FIXED: Android SDK Setup
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # Space-separated list of packages
           packages: 'platforms;android-35 build-tools;35.0.0 cmdline-tools;latest'
       
       - name: Build web assets
@@ -68,10 +66,28 @@ jobs:
           mkdir -p www
           npm run build
       
-      - name: Capacitor sync
-        run: npx cap sync android
+      - name: Add Android platform and sync
+        run: |
+          # Remove old android folder if exists
+          rm -rf android/
+          # Add Android platform
+          npx cap add android
+          # Sync
+          npx cap sync android
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
+      
+      - name: Verify Gradle wrapper exists
+        run: |
+          if [ -f "android/gradlew" ]; then
+            echo "✅ gradlew found"
+            ls -la android/gradle/wrapper/
+          else
+            echo "❌ gradlew not found!"
+            echo "Contents of android/:"
+            ls -la android/
+            exit 1
+          fi
       
       - name: Create keystore
         if: steps.get_version.outputs.release_ready == 'true'
