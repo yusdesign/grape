@@ -479,4 +479,4 @@ setStatus('Ready - Open a file or load sample');
 showToast('🚀 Graph Viewer Ready', 'info');
 
 // Auto-load sample for testing
-// loadSample(); // Uncomment for auto-load
+loadSample(); // Comment to disable
