@@ -1,29 +1,40 @@
 // www/js/GraphParser.js
 class GraphParser {
     parse(content, mimeType) {
-        console.log('🔍 GraphParser.parse() called with mimeType:', mimeType);
-        addDebugLog(`🔍 Parsing ${mimeType}...`, 'info');
+        // Clean up mime type (remove charset, etc.)
+        const cleanMime = mimeType ? mimeType.split(';')[0].trim() : '';
+        console.log('🔍 GraphParser.parse() called with mimeType:', mimeType, 'cleaned:', cleanMime);
+        addDebugLog(`🔍 Parsing ${cleanMime || mimeType}...`, 'info');
         
         try {
             let result;
-            switch (mimeType) {
-                case 'application/json':
+            // First, try to detect format from content if mimeType is generic
+            const detectedType = this.detectFormat(content, cleanMime);
+            
+            switch (detectedType) {
+                case 'json':
                     result = this.parseJSON(content);
                     break;
-                case 'text/xml':
+                case 'xml':
                     result = this.parseXML(content);
                     break;
-                case 'image/svg+xml':
+                case 'svg':
                     result = this.parseSVG(content);
                     break;
-                case 'text/html':
+                case 'html':
                     result = this.parseHTML(content);
                     break;
+                case 'text':
+                    result = this.parseText(content);
+                    break;
                 default:
-                    // Try JSON as fallback
-                    console.warn('⚠️ Unknown mimeType, trying JSON fallback');
-                    addDebugLog('⚠️ Unknown type, trying JSON fallback', 'warn');
-                    result = this.parseJSON(content);
+                    // Last resort: try JSON, then HTML
+                    try {
+                        result = this.parseJSON(content);
+                    } catch (e) {
+                        addDebugLog('⚠️ JSON parse failed, trying HTML...', 'warn');
+                        result = this.parseHTML(content);
+                    }
             }
             
             console.log('✅ Parse result:', result.nodes?.length || 0, 'nodes,', result.edges?.length || 0, 'edges');
@@ -37,6 +48,29 @@ class GraphParser {
         }
     }
 
+    // --- Detect format from content and mime type ---
+    detectFormat(content, mimeType) {
+        // Check mime type first
+        if (mimeType) {
+            if (mimeType.includes('json')) return 'json';
+            if (mimeType.includes('xml')) return 'xml';
+            if (mimeType.includes('svg')) return 'svg';
+            if (mimeType.includes('html')) return 'html';
+            if (mimeType.includes('plain')) return 'text';
+        }
+        
+        // Fallback: inspect content
+        const trimmed = content.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) return 'json';
+        if (trimmed.startsWith('<?xml') || trimmed.startsWith('<xml')) return 'xml';
+        if (trimmed.startsWith('<svg') || trimmed.includes('<svg')) return 'svg';
+        if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html')) return 'html';
+        if (trimmed.startsWith('<')) return 'html'; // Most likely HTML
+        
+        return 'text';
+    }
+
+    // --- parseJSON remains the same ---
     parseJSON(data) {
         console.log('📊 parseJSON() called');
         addDebugLog('📊 Parsing JSON...', 'info');
@@ -44,7 +78,6 @@ class GraphParser {
             const parsed = typeof data === 'string' ? JSON.parse(data) : data;
             console.log('📊 JSON parsed, keys:', Object.keys(parsed));
             
-            // Check if it's already in graph format
             if (parsed.nodes && parsed.edges) {
                 console.log('✅ Found nodes and edges in JSON');
                 return {
@@ -54,16 +87,10 @@ class GraphParser {
                 };
             }
             
-            // Try to convert from UML-like format
-            console.warn('⚠️ JSON format not recognized, attempting generic conversion');
-            addDebugLog('⚠️ Converting generic JSON to graph', 'warn');
-            
-            // If it's an array of objects, try to infer nodes and edges
+            // Try to convert from various formats
             if (Array.isArray(parsed)) {
                 return this.inferGraphFromArray(parsed);
             }
-            
-            // If it's an object with nested objects, try to flatten
             if (typeof parsed === 'object' && parsed !== null) {
                 return this.inferGraphFromObject(parsed);
             }
@@ -76,6 +103,7 @@ class GraphParser {
         }
     }
 
+    // --- inferGraphFromArray ---
     inferGraphFromArray(arr) {
         console.log('🔍 inferGraphFromArray() called with', arr.length, 'items');
         addDebugLog(`🔍 Inferring graph from array (${arr.length} items)`, 'info');
@@ -85,7 +113,6 @@ class GraphParser {
             type: item.type || 'unknown',
             ...item
         }));
-        // Try to find relationships
         const edges = [];
         arr.forEach((item, index) => {
             if (item.refs && Array.isArray(item.refs)) {
@@ -97,7 +124,6 @@ class GraphParser {
                     });
                 });
             }
-            // Check for parent/child relationships
             if (item.parent) {
                 edges.push({
                     from: item.parent,
@@ -118,6 +144,7 @@ class GraphParser {
         return { nodes, edges };
     }
 
+    // --- inferGraphFromObject ---
     inferGraphFromObject(obj) {
         console.log('🔍 inferGraphFromObject() called');
         addDebugLog('🔍 Inferring graph from object', 'info');
@@ -147,6 +174,7 @@ class GraphParser {
         return { nodes, edges };
     }
 
+    // --- parseXML ---
     parseXML(xmlString) {
         console.log('📊 parseXML() called');
         addDebugLog('📊 Parsing XML...', 'info');
@@ -192,6 +220,7 @@ class GraphParser {
         }
     }
 
+    // --- parseSVG ---
     parseSVG(svgString) {
         console.log('📊 parseSVG() called');
         addDebugLog('📊 Parsing SVG...', 'info');
@@ -205,10 +234,7 @@ class GraphParser {
             const idMap = new Map();
             
             elements.forEach(el => {
-                if (el.tagName === 'svg') {
-                    // Skip root SVG
-                    return;
-                }
+                if (el.tagName === 'svg') return;
                 
                 const id = el.id || el.getAttribute('label') || el.tagName;
                 const uniqueId = `${el.tagName}_${id}_${Math.random().toString(36).substr(2, 4)}`;
@@ -219,7 +245,6 @@ class GraphParser {
                     nodes.push(idMap.get(uniqueId));
                 }
                 
-                // Check for parent relationships (groups containing elements)
                 if (el.parentElement && el.parentElement.tagName !== 'svg') {
                     const parentId = el.parentElement.id || el.parentElement.getAttribute('label') || el.parentElement.tagName;
                     const parentUniqueId = `${el.parentElement.tagName}_${parentId}_${Math.random().toString(36).substr(2, 4)}`;
@@ -233,11 +258,9 @@ class GraphParser {
                 }
             });
             
-            // If no nodes found, try to create nodes from SVG elements
             if (nodes.length === 0) {
                 console.warn('⚠️ No SVG elements found, creating fallback nodes');
                 addDebugLog('⚠️ No SVG elements found', 'warn');
-                // Create a single node for the SVG
                 nodes.push({
                     id: 'svg_root',
                     label: 'SVG Document',
@@ -253,7 +276,7 @@ class GraphParser {
         }
     }
 
-    // www/js/GraphParser.js - FIXED parseHTML()
+    // --- parseHTML (FIXED) ---
     parseHTML(htmlString) {
         console.log('📊 parseHTML() called');
         addDebugLog('📊 Parsing HTML...', 'info');
@@ -313,5 +336,24 @@ class GraphParser {
             addDebugLog('❌ HTML parse error: ' + e.message, 'error');
             return { nodes: [], edges: [] };
         }
+    }
+
+    // --- parseText ---
+    parseText(txtStr) {
+        console.log('📊 parseText() called');
+        addDebugLog('📊 Parsing text...', 'info');
+        const lines = txtStr.split('\n').filter(line => line.trim());
+        const nodes = [];
+        const edges = [];
+        
+        lines.forEach((line, index) => {
+            const id = `line_${index}`;
+            nodes.push({ id, label: line.substring(0, 50) + (line.length > 50 ? '...' : ''), type: 'text' });
+            if (index > 0) {
+                edges.push({ from: `line_${index - 1}`, to: id, label: 'follows' });
+            }
+        });
+        
+        return { nodes, edges };
     }
 }
