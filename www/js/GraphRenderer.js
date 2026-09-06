@@ -183,6 +183,137 @@ class GraphRenderer {
         return this.network;
     }
 
+    // --- GRAPE LAYOUT: Hierarchical tree analyzer ---
+    analyzeTree() {
+        if (!this.nodes || !this.edges) return null;
+        
+        const nodeMap = {};
+        this.nodes.forEach(node => {
+            nodeMap[node.id] = {
+                ...node,
+                children: [],
+                parents: [],
+                level: 0,
+                visited: false
+            };
+        });
+    
+        // Build tree structure
+        this.edges.forEach(edge => {
+            if (nodeMap[edge.from] && nodeMap[edge.to]) {
+                nodeMap[edge.from].children.push(edge.to);
+                nodeMap[edge.to].parents.push(edge.from);
+            }
+        });
+    
+        // Find root nodes (no parents)
+        const roots = [];
+        Object.values(nodeMap).forEach(node => {
+            if (node.parents.length === 0) {
+                roots.push(node.id);
+            }
+        });
+    
+        // If no roots found (disconnected graph), use all nodes
+        if (roots.length === 0) {
+            Object.values(nodeMap).forEach(node => {
+                roots.push(node.id);
+            });
+        }
+    
+        // Assign levels (BFS from roots)
+        const queue = roots.map(id => ({ id, level: 0 }));
+        while (queue.length > 0) {
+            const current = queue.shift();
+            const node = nodeMap[current.id];
+            if (node.visited) continue;
+            node.visited = true;
+            node.level = current.level;
+            
+            node.children.forEach(childId => {
+                if (!nodeMap[childId].visited) {
+                    queue.push({ id: childId, level: current.level + 1 });
+                }
+            });
+        }
+    
+        // Calculate positions based on levels
+        const levelGroups = {};
+        Object.values(nodeMap).forEach(node => {
+            const level = node.level;
+            if (!levelGroups[level]) {
+                levelGroups[level] = [];
+            }
+            levelGroups[level].push(node.id);
+        });
+    
+        // Position nodes in a tree layout (grape style)
+        const maxLevel = Math.max(...Object.keys(levelGroups).map(Number));
+        const positions = {};
+        const baseSpacing = 200;
+        const verticalSpacing = 250;
+    
+        Object.keys(levelGroups).forEach(levelKey => {
+            const level = Number(levelKey);
+            const nodesAtLevel = levelGroups[level];
+            const count = nodesAtLevel.length;
+            const width = count * baseSpacing;
+            const startX = -width / 2;
+    
+            nodesAtLevel.forEach((nodeId, index) => {
+                positions[nodeId] = {
+                    x: startX + (index * baseSpacing) + baseSpacing / 2,
+                    y: level * verticalSpacing + 50
+                };
+            });
+        });
+    
+        return { positions, rootIds: roots, maxLevel };
+    }
+    
+    // --- Apply Grape Layout ---
+    applyGrapeLayout(animation = true) {
+        if (!this.network) return;
+        
+        const treeData = this.analyzeTree();
+        if (!treeData || !treeData.positions) {
+            addDebugLog('⚠️ Could not analyze tree structure', 'warn');
+            return;
+        }
+    
+        // Update node positions
+        Object.entries(treeData.positions).forEach(([nodeId, pos]) => {
+            this.nodes.update({
+                id: nodeId,
+                x: pos.x,
+                y: pos.y,
+                fixed: true
+            });
+        });
+    
+        // Update layout options
+        this.network.setOptions({
+            physics: {
+                enabled: false
+            },
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'UD',
+                    nodeSpacing: 200,
+                    levelSeparation: 250,
+                    treeSpacing: 200
+                }
+            }
+        });
+    
+        // Move view to fit all nodes
+        setTimeout(() => {
+            this.network.fit({ animation });
+            addDebugLog(`📐 Grape layout applied (${Object.keys(treeData.positions).length} nodes positioned)`, 'success');
+        }, 100);
+    }
+
     // --- Setup edit events ---
     setupEditEvents() {
         if (!this.network) return;
@@ -231,11 +362,17 @@ class GraphRenderer {
         }
     }
 
-    // --- Edit Edge Callback ---
+    // --- Edit Edge Callback (with label editing) ---
     editEdgeCallback(data, callback) {
-        const newLabel = prompt('🔗 Edit edge label:', data.label || '');
+        // data = { id, from, to, label, ... }
+        const currentLabel = data.label || '';
+        const newLabel = prompt('🔗 Edit edge label:\n(leave empty to remove label)', currentLabel);
         if (newLabel !== null) {
-            data.label = newLabel.trim() || undefined;
+            if (newLabel.trim()) {
+                data.label = newLabel.trim();
+            } else {
+                delete data.label; // Remove label if empty
+            }
             callback(data);
             addDebugLog(`🔗 Updated edge: ${data.label || 'no label'}`, 'success');
         } else {
