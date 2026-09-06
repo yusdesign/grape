@@ -1,4 +1,33 @@
 // www/js/app.js
+// Fallback if addDebugLog is not defined globally
+if (typeof addDebugLog === 'undefined') {
+    window.addDebugLog = function(message, type = 'info') {
+        const debugEl = document.getElementById('debugConsole');
+        if (!debugEl) {
+            console.log(`[${type}] ${message}`);
+            return;
+        }
+        const colors = {
+            error: '#ff4444',
+            warn: '#ffaa00',
+            info: '#44aaff',
+            success: '#44ff88',
+            debug: '#888888'
+        };
+        const div = document.createElement('div');
+        div.style.color = colors[type] || '#ffffff';
+        const timestamp = new Date().toLocaleTimeString();
+        div.textContent = `[${timestamp}] ${message}`;
+        debugEl.appendChild(div);
+        while (debugEl.children.length > 50) {
+            debugEl.removeChild(debugEl.firstChild);
+        }
+        debugEl.scrollTop = debugEl.scrollHeight;
+        console.log(`[${type}] ${message}`);
+    };
+    console.log('✅ addDebugLog fallback defined in app.js');
+}
+
 class GrapeApp {
     constructor() {
         this.parser = new GraphParser();
