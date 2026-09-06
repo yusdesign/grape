@@ -7,20 +7,11 @@
     "allowMixedContent": true,
     "minSdkVersion": 23,
     "targetSdkVersion": 35,
-    "webContentsDebuggingEnabled": true,
-    "buildOptions": {
-      "keystorePath": "release.keystore",
-      "keystoreAlias": "key0",
-      "keystorePassword": "${KEYSTORE_PASSWORD}",
-      "keyPassword": "${KEY_PASSWORD}"
-    }
+    "webContentsDebuggingEnabled": true
   },
   "plugins": {
     "Filesystem": {
-      "requestPermissions": true
-    },
-    "Share": {
-      "requestPermissions": true
+      "strict": true
     }
   }
 }
