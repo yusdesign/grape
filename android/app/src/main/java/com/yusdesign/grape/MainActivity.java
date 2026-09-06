@@ -2,8 +2,7 @@ package com.yusdesign.grape;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.os.Build
-;
+import android.os.Build;
 import android.os.Bundle;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
