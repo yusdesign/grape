@@ -127,6 +127,7 @@ class GrapeApp {
         const menuLoadURL = document.getElementById('menuLoadURL');
         const menuPickFile = document.getElementById('menuPickFile');
         const menuExport = document.getElementById('menuExport');
+        const menuLayout = document.getElementById('menuLayout');
         const menuReset = document.getElementById('menuReset');
         const menuShare = document.getElementById('menuShare');
 
@@ -157,6 +158,16 @@ class GrapeApp {
                 this.exportGraph();
                 this.isMenuOpen = false;
                 menuDropdown.style.display = 'none';
+            });
+        }
+
+        if (menuLayout) {
+            menuLayout.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('📐 Menu: Switch Layout clicked', 'info');
+                this.switchLayout();
+                this.isMenuOpen = false;
+                document.getElementById('menuDropdown').style.display = 'none';
             });
         }
         
