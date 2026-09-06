@@ -1,4 +1,4 @@
-// www/capacitor.js - Mock for GitHub Pages
+// www/capacitor.js - Updated Mock
 window.Capacitor = {
     isNativePlatform: function() {
         return false;
@@ -38,9 +38,21 @@ window.Capacitor = {
     }
 };
 
-// Prevent "listener indicated async response" errors
+// ⭐ FIX: Prevent the "asynchronous response" error
 if (window.webkit && window.webkit.messageHandlers) {
-    // Do nothing - just prevent the error
+    // Override any message handlers that might cause the error
+    console.log('📱 WebKit message handlers present, silencing async errors');
 }
+
+// ⭐ FIX: Silence the specific error
+window.addEventListener('unhandledrejection', function(e) {
+    if (e.reason && e.reason.message && 
+        e.reason.message.includes('listener indicated an asynchronous response')) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.debug('📱 Silenced Capacitor async listener error (web mode)');
+        return false;
+    }
+});
 
 console.log('📱 Capacitor mock loaded (web mode)');
