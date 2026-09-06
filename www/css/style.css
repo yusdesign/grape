@@ -46,6 +46,15 @@ body {
     background: #1c2333;
 }
 
+#brand {
+    font-weight: bold;
+    color: #58a6ff;
+    font-size: 16px;
+    margin-right: 12px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border-color);
+}
+
 #status {
     flex: 1;
     font-size: 12px;
