@@ -1,11 +1,11 @@
 {
   "name": "grape",
   "version": "1.0.0",
-  "description": "Graph viewer for UML-like files (JSON, XML, SVG) using vis-network",
+  "description": "Graph viewer for UML-like files using vis-network",
   "main": "www/index.html",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node src/index.js",
     "test": "node --test tests/*.test.js",
     "sync": "npx cap sync android",
     "build:apk": "cd android && ./gradlew assembleDebug"
@@ -15,9 +15,9 @@
     "@capacitor/core": "^8.4.2",
     "@capacitor/filesystem": "^8.1.2",
     "@capawesome/capacitor-asset-manager": "^8.0.3",
-    "@capawesome/capacitor-file-picker": "^8.0.3",
+    "@capawesome/capacitor-file-picker": "^8.1.0",
     "html2canvas": "^1.4.1",
-    "vis-network": "^10.1.0"
+    "vis-network": "^10.1.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.2",
@@ -25,5 +25,8 @@
   },
   "engines": {
     "node": ">=24.0.0"
+  },
+  "overrides": {
+    "uuid": "^11.0.5"
   }
 }
