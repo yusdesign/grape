@@ -531,6 +531,18 @@ class GrapeApp {
             if (nodeCount) {
                 nodeCount.textContent = `${this.currentData.nodes.length} nodes`;
             }
+
+            // Update layout label
+            const layoutLabel = document.getElementById('layoutLabel');
+            if (layoutLabel && this.renderer) {
+                const layout = this.renderer.currentLayout || 'hierarchical';
+                const layoutNames = {
+                    'hierarchical': '📐 hierarchical',
+                    'force': '🔄 force',
+                    'grape': '🍇 grape tree'
+                };
+                layoutLabel.textContent = layoutNames[layout] || layout;
+            }
             
             this.addDebugLog('✅ Graph rendered successfully', 'success');
             this.updateStatus(`Graph rendered (${this.currentData.nodes.length} nodes)`);
