@@ -244,6 +244,7 @@ class GraphRenderer {
     }
 
     // --- Apply Advanced Styling ---
+    // Updated applyAdvancedStyling with images and proper coloring
     applyAdvancedStyling(graphData, isUML) {
         const typeColors = {
             'class': { bg: '#1f6feb', border: '#58a6ff', icon: '📦' },
@@ -254,27 +255,26 @@ class GraphRenderer {
             'component': { bg: '#6b4c2a', border: '#d97706', icon: '🧩' },
             'default': { bg: '#1c2333', border: '#58a6ff', icon: '📄' }
         };
-
+    
         graphData.nodes.forEach(node => {
             const type = (node.type || 'default').toLowerCase();
             const colors = typeColors[type] || typeColors.default;
-
-            if (isUML) {
+    
+            // --- IMAGE PLACEHOLDER (if node has image) ---
+            if (node.image) {
+                node.shape = 'image';
+                node.image = node.image; // URL or base64
+                node.size = 40; // Size of the image
+                node.shapeProperties = {
+                    useImageSize: true,
+                    borderRadius: 6
+                };
+            } else {
                 node.shape = 'box';
                 node.shapeProperties = { borderRadius: 6 };
             }
-
-            // Multi-font label
-            let label = node.label || node.id;
-            if (node.type && node.type !== 'default') {
-                const icon = typeColors[node.type.toLowerCase()]?.icon || '';
-                label = `<b>${icon} ${label}</b>`;
-                if (node.stereotype) {
-                    label += `\n<i>«${node.stereotype}»</i>`;
-                }
-            }
-            node.label = label;
-
+    
+            // --- COLORING (properly applied) ---
             node.color = {
                 background: colors.bg,
                 border: colors.border,
@@ -287,7 +287,18 @@ class GraphRenderer {
                     border: colors.bg
                 }
             };
-
+    
+            // --- LABEL with multi-font ---
+            let label = node.label || node.id;
+            if (node.type && node.type !== 'default' && isUML) {
+                const icon = typeColors[node.type.toLowerCase()]?.icon || '';
+                label = `<b>${icon} ${label}</b>`;
+                if (node.stereotype) {
+                    label += `\n<i>«${node.stereotype}»</i>`;
+                }
+            }
+            node.label = label;
+    
             node.font = {
                 color: '#e6edf3',
                 multi: 'html',
@@ -297,7 +308,7 @@ class GraphRenderer {
                     size: 16
                 }
             };
-
+    
             node.borderWidth = 2;
             node.borderWidthSelected = 4;
             node.shadow = {
@@ -308,41 +319,50 @@ class GraphRenderer {
                 y: 3
             };
         });
-
-        // Edge styling
+    
+        // --- EDGE COLORING & LABELS ---
         if (graphData.edges) {
             graphData.edges.forEach(edge => {
                 const label = (edge.label || '').toLowerCase();
-                let arrowType = 'to';
                 let dashPattern = false;
                 let relationshipLabel = edge.label || '';
-
+    
+                // UML relationship detection
                 if (label.includes('extends') || label.includes('inherits')) {
                     dashPattern = false;
                     relationshipLabel = '▲ extends';
+                    edge.color = { color: '#58a6ff', highlight: '#79c0ff' };
                 } else if (label.includes('implements')) {
                     dashPattern = true;
                     relationshipLabel = '△ implements';
+                    edge.color = { color: '#3fb950', highlight: '#4ade80' };
                 } else if (label.includes('association')) {
                     dashPattern = false;
                     relationshipLabel = '▸ association';
+                    edge.color = { color: '#d29922', highlight: '#fbbf24' };
                 } else if (label.includes('aggregation')) {
                     dashPattern = false;
                     relationshipLabel = '◇ aggregation';
+                    edge.color = { color: '#bc8cff', highlight: '#d8b4fe' };
                 } else if (label.includes('composition')) {
                     dashPattern = false;
                     relationshipLabel = '◆ composition';
+                    edge.color = { color: '#f85149', highlight: '#fb7185' };
                 } else if (label.includes('dependency')) {
                     dashPattern = true;
                     relationshipLabel = '⇢ dependency';
+                    edge.color = { color: '#8b949e', highlight: '#d1d5db' };
                 } else if (label.includes('realization')) {
                     dashPattern = true;
                     relationshipLabel = '⚡ realization';
+                    edge.color = { color: '#f97316', highlight: '#fb923c' };
                 }
-
+    
                 edge.arrows = { to: { enabled: true } };
                 edge.dashes = dashPattern;
                 edge.label = relationshipLabel || edge.label;
+                
+                // Edge label styling
                 edge.font = {
                     align: 'middle',
                     background: '#0d1117',
@@ -351,13 +371,9 @@ class GraphRenderer {
                     size: 10,
                     color: '#8b949e'
                 };
+                
                 edge.width = 2;
                 edge.selectionWidth = 4;
-                edge.color = {
-                    color: '#484f58',
-                    highlight: '#58a6ff',
-                    hover: '#58a6ff'
-                };
                 edge.smooth = {
                     type: 'cubicBezier',
                     roundness: 0.3,
