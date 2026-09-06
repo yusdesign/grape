@@ -7,23 +7,15 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🍇%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="js/lib/vis-network.min.css">
-    <!-- Detect GitHub Pages environment -->
-    <script>
-        window.IS_GITHUB_PAGES = window.location.hostname.includes('github.io');
-        console.log('🌐 Environment:', window.IS_GITHUB_PAGES ? 'GitHub Pages' : 'Local/Capacitor');
-    </script>
-    <!-- If on GitHub Pages, load mock capacitor.js -->
-    <script>
-        if (window.IS_GITHUB_PAGES) {
-            // Mock capacitor.js will be loaded from the file
-            console.log('📱 Loading Capacitor mock for web...');
-        }
-    </script>
 </head>
 <body>
     <!-- ===== TOOLBAR ===== -->
     <div id="toolbar">
-        <span id="brand">🍇 grape</span>
+        <div id="grapeLogo">
+            <span class="grape-icon">🍇</span>
+            <span class="grape-text">GRAPE</span>
+        </div>
+        
         <button id="sampleBtn">📄 Sample</button>
         <button id="menuBtn">☰</button>
         <span id="status">Ready</span>
@@ -33,9 +25,17 @@
     <!-- ===== DROPDOWN MENU ===== -->
     <div id="menuDropdown" style="display:none;">
         <div id="menuPickFile">📂 Open File</div>
+        <div id="menuLoadURL">🌐 Load from URL</div>
         <div id="menuExport">💾 Export</div>
         <div id="menuReset">🔄 Reset View</div>
         <div id="menuShare">📤 Share</div>
+    </div>
+
+    <!-- ===== URL INPUT (hidden by default, shown by menu) ===== -->
+    <div id="urlInputContainer" style="display:none; padding:8px 12px; background:var(--bg-secondary); border-bottom:1px solid var(--border-color);">
+        <input type="text" id="urlInput" placeholder="https://example.com/graph.json" style="flex:1; padding:6px 10px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); font-size:14px; width:70%;">
+        <button id="urlLoadBtn" style="padding:6px 16px; background:var(--accent-blue); border:none; border-radius:4px; color:#fff; cursor:pointer;">Load</button>
+        <button id="urlCancelBtn" style="padding:6px 16px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:4px; color:var(--text-secondary); cursor:pointer;">Cancel</button>
     </div>
 
     <!-- ===== GRAPH CONTAINER ===== -->
@@ -61,16 +61,14 @@
     <script src="js/lib/vis-network.min.js"></script>
     <script src="js/lib/html2canvas.min.js"></script>
 
-    <!-- ===== GLOBAL DEBUG FUNCTION ===== -->
+    <!-- Global Debug Function -->
     <script>
-        // This must be defined BEFORE app.js loads
         function addDebugLog(message, type = 'info') {
             const debugEl = document.getElementById('debugConsole');
             if (!debugEl) {
                 console.log(`[${type}] ${message}`);
                 return;
             }
-            
             const colors = {
                 error: '#ff4444',
                 warn: '#ffaa00',
@@ -78,25 +76,30 @@
                 success: '#44ff88',
                 debug: '#888888'
             };
-            
             const div = document.createElement('div');
             div.style.color = colors[type] || '#ffffff';
             const timestamp = new Date().toLocaleTimeString();
             div.textContent = `[${timestamp}] ${message}`;
             debugEl.appendChild(div);
-            
-            // Keep only last 50 lines
             while (debugEl.children.length > 50) {
                 debugEl.removeChild(debugEl.firstChild);
             }
-            
             debugEl.scrollTop = debugEl.scrollHeight;
             console.log(`[${type}] ${message}`);
         }
-        
-        // Also make it available globally
         window.addDebugLog = addDebugLog;
         console.log('✅ addDebugLog global function defined');
+    </script>
+
+    <!-- Detect GitHub Pages environment -->
+    <script>
+        window.IS_GITHUB_PAGES = window.location.hostname.includes('github.io');
+        console.log('🌐 Environment:', window.IS_GITHUB_PAGES ? 'GitHub Pages' : 'Local/Capacitor');
+        
+        // If on GitHub Pages, load mock capacitor.js
+        if (window.IS_GITHUB_PAGES) {
+            console.log('📱 Loading Capacitor mock for web...');
+        }
     </script>
 
     <!-- App scripts -->
