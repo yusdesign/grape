@@ -308,25 +308,24 @@ class GrapeApp {
         this.addDebugLog('✅ Sample loaded successfully', 'success');
     }
 
-    // --- Load from URL (New Feature) ---
+    // --- Load from URL (with better content type handling) ---
     async loadFromURL() {
         const urlInputContainer = document.getElementById('urlInputContainer');
         const urlInput = document.getElementById('urlInput');
         const urlLoadBtn = document.getElementById('urlLoadBtn');
         const urlCancelBtn = document.getElementById('urlCancelBtn');
         
-        // Show the URL input
         urlInputContainer.style.display = 'flex';
         urlInput.value = '';
         urlInput.focus();
         this.isMenuOpen = false;
         document.getElementById('menuDropdown').style.display = 'none';
         
-        // Handle load button click
         const loadHandler = async () => {
             const url = urlInput.value.trim();
             if (!url) {
                 this.addDebugLog('❌ Please enter a URL', 'warn');
+                this.showToast('Please enter a URL', 'error');
                 return;
             }
             
@@ -339,14 +338,20 @@ class GrapeApp {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
+                // Get content type from response
+                let contentType = response.headers.get('content-type') || '';
+                // Remove charset if present
+                contentType = contentType.split(';')[0].trim();
+                this.addDebugLog(`📋 Content-Type: ${contentType}`, 'debug');
+                
+                // Read as text
                 const content = await response.text();
                 const filename = url.split('/').pop() || 'remote-file';
-                const mimeType = response.headers.get('content-type') || this.guessMimeType(filename);
                 
                 this.addDebugLog(`📖 Loaded ${content.length} bytes from URL`, 'info');
-                this.processFileContent(content, filename, mimeType);
                 
-                // Hide input
+                // Pass the detected content type
+                this.processFileContent(content, filename, contentType);
                 urlInputContainer.style.display = 'none';
                 
             } catch (e) {
@@ -356,28 +361,26 @@ class GrapeApp {
             }
         };
         
-        // Handle cancel
         const cancelHandler = () => {
             urlInputContainer.style.display = 'none';
             this.addDebugLog('📋 URL input cancelled', 'debug');
         };
         
-        // Bind events (remove old listeners to avoid duplicates)
-        urlLoadBtn.replaceWith(urlLoadBtn.cloneNode(true));
-        urlCancelBtn.replaceWith(urlCancelBtn.cloneNode(true));
+        // Clean up old listeners
+        const newLoadBtn = urlLoadBtn.cloneNode(true);
+        const newCancelBtn = urlCancelBtn.cloneNode(true);
+        urlLoadBtn.parentNode.replaceChild(newLoadBtn, urlLoadBtn);
+        urlCancelBtn.parentNode.replaceChild(newCancelBtn, urlCancelBtn);
         
         document.getElementById('urlLoadBtn').addEventListener('click', loadHandler);
         document.getElementById('urlCancelBtn').addEventListener('click', cancelHandler);
         
-        // Enter key support
-        urlInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                loadHandler();
-            }
-            if (e.key === 'Escape') {
-                cancelHandler();
-            }
-        });
+        // Enter/Escape support
+        const keyHandler = (e) => {
+            if (e.key === 'Enter') loadHandler();
+            if (e.key === 'Escape') cancelHandler();
+        };
+        urlInput.addEventListener('keydown', keyHandler);
     }
     
     // --- Guess MIME type from filename ---
