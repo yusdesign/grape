@@ -25,6 +25,9 @@ class GrapeApp {
         this.setupButtons();
         this.setupFileInput();
         
+        // Setup settings drawer
+        this.setupSettingsDrawer();
+        
         // Update status
         this.updateStatus('Ready - tap Sample or Open File');
         this.addDebugLog('🍇 Grape ready!', 'success');
@@ -251,45 +254,72 @@ class GrapeApp {
 
     // --- Settings Drawer ---
     setupSettingsDrawer() {
+        console.log('⚙️ Setting up settings drawer...');
+        
         const toggle = document.getElementById('settingsToggle');
         const drawer = document.getElementById('settingsDrawer');
+        
+        if (!toggle || !drawer) {
+            console.warn('⚠️ Settings drawer elements not found');
+            return;
+        }
+        
         let isOpen = false;
     
         toggle.addEventListener('click', () => {
             isOpen = !isOpen;
             drawer.style.display = isOpen ? 'block' : 'none';
+            this.addDebugLog(`⚙️ Settings drawer ${isOpen ? 'opened' : 'closed'}`, 'debug');
         });
     
-        // Apply settings
-        document.getElementById('applySettingsBtn').addEventListener('click', () => {
-            if (!this.renderer) {
-                this.addDebugLog('⚠️ No graph to apply settings', 'warn');
-                return;
-            }
+        // Apply settings button
+        const applyBtn = document.getElementById('applySettingsBtn');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', () => {
+                if (!this.renderer || !this.renderer.network) {
+                    this.addDebugLog('⚠️ No graph to apply settings', 'warn');
+                    return;
+                }
     
-            const layout = document.getElementById('layoutSelect').value;
-            const nodeSize = parseInt(document.getElementById('nodeSizeSlider').value);
-            const edgeWidth = parseInt(document.getElementById('edgeWidthSlider').value);
-            const physics = document.getElementById('physicsToggle').checked;
+                const layout = document.getElementById('layoutSelect').value;
+                const nodeSize = parseInt(document.getElementById('nodeSizeSlider').value);
+                const edgeWidth = parseInt(document.getElementById('edgeWidthSlider').value);
+                const physics = document.getElementById('physicsToggle').checked;
     
-            // Apply layout
-            if (layout === 'grape') {
-                this.renderer.applyGrapeLayout();
-            } else {
-                this.renderer.switchLayout(layout);
-            }
+                // Apply layout
+                if (layout === 'grape' && this.renderer.applyGrapeLayout) {
+                    this.renderer.applyGrapeLayout();
+                    this.addDebugLog('🍇 Grape tree layout applied', 'success');
+                } else if (layout === 'hierarchical' || layout === 'force') {
+                    this.renderer.switchLayout(layout);
+                    this.addDebugLog(`📐 Switched to ${layout} layout`, 'success');
+                }
     
-            // Apply styling
-            this.renderer.network.setOptions({
-                nodes: { size: nodeSize },
-                edges: { width: edgeWidth },
-                physics: { enabled: physics }
+                // Apply styling
+                this.renderer.network.setOptions({
+                    nodes: { size: nodeSize },
+                    edges: { width: edgeWidth },
+                    physics: { enabled: physics }
+                });
+    
+                // Update layout label
+                const layoutLabel = document.getElementById('layoutLabel');
+                if (layoutLabel) {
+                    const layoutNames = {
+                        'hierarchical': '📐 hierarchical',
+                        'force': '🔄 force',
+                        'grape': '🍇 grape tree'
+                    };
+                    layoutLabel.textContent = layoutNames[layout] || layout;
+                }
+    
+                this.addDebugLog(`✅ Settings applied: node size ${nodeSize}, edge width ${edgeWidth}, physics ${physics ? 'on' : 'off'}`, 'success');
+                drawer.style.display = 'none';
+                isOpen = false;
             });
-    
-            this.addDebugLog(`✅ Settings applied: ${layout} layout, node size ${nodeSize}, edge width ${edgeWidth}, physics ${physics ? 'on' : 'off'}`, 'success');
-            drawer.style.display = 'none';
-            isOpen = false;
-        });
+        }
+        
+        this.addDebugLog('✅ Settings drawer setup complete', 'success');
     }
 
     // --- Process File Content ---
