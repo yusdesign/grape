@@ -504,6 +504,11 @@ class GrapeApp {
         this.addDebugLog(`📐 Switching layout to ${next}...`, 'info');
         this.renderer.switchLayout(next);
         this.showToast(`Layout: ${next}`, 'info');
+        
+        const layoutLabel = document.getElementById('layoutLabel');
+        if (layoutLabel) {
+            layoutLabel.textContent = `📐 ${next}`;
+        }
     }
 
     // --- Reset View (FIXED: uses this.showToast) ---
