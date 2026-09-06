@@ -478,6 +478,23 @@ class GrapeApp {
         }
     }
 
+    // --- Switch Layout ---
+    switchLayout() {
+        if (!this.renderer || !this.renderer.network) {
+            this.addDebugLog('⚠️ No graph to switch layout', 'warn');
+            this.showToast('No graph to switch layout', 'error');
+            return;
+        }
+        
+        // Toggle between hierarchical and force
+        const current = this.renderer.currentLayout || 'hierarchical';
+        const next = current === 'hierarchical' ? 'force' : 'hierarchical';
+        
+        this.addDebugLog(`📐 Switching layout to ${next}...`, 'info');
+        this.renderer.switchLayout(next);
+        this.showToast(`Layout: ${next}`, 'info');
+    }
+
     // --- Reset View (FIXED: uses this.showToast) ---
     resetView() {
         this.addDebugLog('🔄 Resetting view...', 'info');
