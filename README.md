@@ -15,10 +15,9 @@
 
 ## 📦 Tech Stack
 
-- **Capacitor 5** - Native bridge
+- **Capacitor 8** - Native bridge
 - **Capawesome File Access** - File system
 - **vis-network** - Graph rendering
-- **GitHub Actions** - CI/CD builds
 
 ## 🛠️ Development
 
