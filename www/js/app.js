@@ -249,6 +249,49 @@ class GrapeApp {
         }
     }
 
+    // --- Settings Drawer ---
+    setupSettingsDrawer() {
+        const toggle = document.getElementById('settingsToggle');
+        const drawer = document.getElementById('settingsDrawer');
+        let isOpen = false;
+    
+        toggle.addEventListener('click', () => {
+            isOpen = !isOpen;
+            drawer.style.display = isOpen ? 'block' : 'none';
+        });
+    
+        // Apply settings
+        document.getElementById('applySettingsBtn').addEventListener('click', () => {
+            if (!this.renderer) {
+                this.addDebugLog('⚠️ No graph to apply settings', 'warn');
+                return;
+            }
+    
+            const layout = document.getElementById('layoutSelect').value;
+            const nodeSize = parseInt(document.getElementById('nodeSizeSlider').value);
+            const edgeWidth = parseInt(document.getElementById('edgeWidthSlider').value);
+            const physics = document.getElementById('physicsToggle').checked;
+    
+            // Apply layout
+            if (layout === 'grape') {
+                this.renderer.applyGrapeLayout();
+            } else {
+                this.renderer.switchLayout(layout);
+            }
+    
+            // Apply styling
+            this.renderer.network.setOptions({
+                nodes: { size: nodeSize },
+                edges: { width: edgeWidth },
+                physics: { enabled: physics }
+            });
+    
+            this.addDebugLog(`✅ Settings applied: ${layout} layout, node size ${nodeSize}, edge width ${edgeWidth}, physics ${physics ? 'on' : 'off'}`, 'success');
+            drawer.style.display = 'none';
+            isOpen = false;
+        });
+    }
+
     // --- Process File Content ---
     processFileContent(content, filename, mimeType) {
         this.addDebugLog(`🔍 Processing: ${filename} (${mimeType})`, 'info');
