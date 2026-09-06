@@ -101,6 +101,14 @@ body {
     white-space: nowrap;
 }
 
+#layoutLabel {
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-left: 1px solid var(--border-color);
+    font-family: monospace;
+}
+
 #nodeCount {
     font-size: 11px;
     color: var(--text-secondary);
