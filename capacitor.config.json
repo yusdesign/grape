@@ -2,7 +2,12 @@
   "appId": "com.yusdesign.grape",
   "appName": "grape",
   "webDir": "www",
-  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": ["*"]
+  },
+  "bundledWebRuntime": true,
   "android": {
     "allowMixedContent": true,
     "minSdkVersion": 23,
