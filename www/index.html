@@ -11,7 +11,14 @@
     <script>
         window.IS_GITHUB_PAGES = window.location.hostname.includes('github.io');
         console.log('🌐 Environment:', window.IS_GITHUB_PAGES ? 'GitHub Pages' : 'Local/Capacitor');
-    </script>    
+    </script>
+    <!-- If on GitHub Pages, load mock capacitor.js -->
+    <script>
+        if (window.IS_GITHUB_PAGES) {
+            // Mock capacitor.js will be loaded from the file
+            console.log('📱 Loading Capacitor mock for web...');
+        }
+    </script>
 </head>
 <body>
     <!-- ===== TOOLBAR ===== -->
