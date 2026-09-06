@@ -1,4 +1,4 @@
-// www/js/GraphRenderer.js - Full Feature Implementation
+// www/js/GraphRenderer.js - FULLY FIXED
 class GraphRenderer {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -9,6 +9,20 @@ class GraphRenderer {
         this.editMode = false;
         this.selectedNodeId = null;
         this.selectedEdgeId = null;
+        this.layoutOptions = {
+            hierarchical: {
+                enabled: true,
+                direction: 'UD',
+                sortMethod: 'directed',
+                nodeSpacing: 150,
+                levelSeparation: 200,
+                treeSpacing: 200,
+                blockShifting: true,
+                edgeMinimization: true,
+                parentCentralization: true
+                // overlapAvoidance removed - not a valid option
+            }
+        };
     }
 
     render(graphData, options = {}) {
@@ -23,36 +37,17 @@ class GraphRenderer {
 
         const isLarge = graphData.nodes.length > 500;
 
-        // --- HIERARCHICAL LAYOUT WITH OVERLAP AVOIDANCE ---
-        const layoutOptions = {
-            hierarchical: {
-                enabled: !isLarge && (options.hierarchical !== false),
-                direction: 'UD',        // Up-Down
-                sortMethod: 'directed',
-                nodeSpacing: 200,       // Increased for overlap avoidance
-                levelSeparation: 250,   // More vertical space
-                treeSpacing: 200,
-                blockShifting: true,
-                edgeMinimization: true,
-                parentCentralization: true,
-                overlapAvoidance: true  // ⭐ Prevent node overlap
-            },
-            randomSeed: 42,
-            improvedLayout: !isLarge
-        };
-
-        if (options.layout === 'force') {
-            layoutOptions.hierarchical.enabled = false;
-        }
-
-        // --- ADVANCED NODE STYLING (Images, Borders, Padding) ---
+        // --- CORRECT HIERARCHICAL LAYOUT ---
+        this.layoutOptions.hierarchical.enabled = !isLarge && (options.hierarchical !== false);
+        
+        // --- CORRECT NODE STYLING (no "padding" at root level) ---
         const defaultOptions = {
             nodes: {
                 shape: 'box',
                 margin: 12,
                 widthConstraint: {
                     minimum: 100,
-                    maximum: 300
+                    maximum: 250
                 },
                 heightConstraint: {
                     minimum: 40
@@ -61,7 +56,7 @@ class GraphRenderer {
                     size: 14,
                     face: 'Arial',
                     color: '#e6edf3',
-                    multi: 'html',      // ⭐ Enable multi-font (bold, color, etc.)
+                    multi: 'html',
                     bold: {
                         size: 16,
                         face: 'Arial',
@@ -82,16 +77,15 @@ class GraphRenderer {
                     x: 5,
                     y: 5
                 },
-                padding: 10,            // ⭐ Padding inside nodes
                 shapeProperties: {
-                    borderRadius: 6,    // ⭐ Rounded corners
+                    borderRadius: 6,
                     useImageSize: true
                 }
+                // padding removed - use margin instead
             },
             edges: {
                 arrows: {
-                    to: { enabled: true, scaleFactor: 0.8 },
-                    from: { enabled: false }
+                    to: { enabled: true, scaleFactor: 0.8 }
                 },
                 smooth: {
                     type: 'cubicBezier',
@@ -103,7 +97,7 @@ class GraphRenderer {
                     color: '#8b949e',
                     face: 'Arial',
                     align: 'middle',
-                    background: '#0d1117',  // ⭐ Background behind label
+                    background: '#0d1117',
                     strokeWidth: 2,
                     strokeColor: '#0d1117'
                 },
@@ -127,14 +121,14 @@ class GraphRenderer {
                     centralGravity: 0.01,
                     springLength: 150,
                     springConstant: 0.08,
-                    damping: 0.4,
-                    avoidOverlap: 0.5   // ⭐ Physics overlap avoidance
+                    damping: 0.4
+                    // avoidOverlap removed - not a valid option
                 },
                 maxVelocity: 50,
                 minVelocity: 0.1,
                 timestep: 0.5
             },
-            layout: layoutOptions,
+            layout: this.layoutOptions,
             interaction: {
                 hover: true,
                 tooltipDelay: 200,
@@ -143,10 +137,7 @@ class GraphRenderer {
                 navigationButtons: true,
                 multiselect: true,
                 dragNodes: true,
-                dragView: true,
-                hideEdgesOnDrag: false,
-                hideNodesOnDrag: false,
-                selectConnectedEdges: true  // ⭐ Select connected edges with node
+                selectConnectedEdges: true
             },
             manipulation: {
                 enabled: false,
@@ -177,13 +168,13 @@ class GraphRenderer {
             { ...defaultOptions, ...options }
         );
 
-        // --- Setup events ---
+        // --- Setup edit events (after network created) ---
         this.setupEditEvents();
 
         setTimeout(() => {
             if (this.network) {
                 this.network.fit();
-                if (layoutOptions.hierarchical.enabled) {
+                if (this.layoutOptions.hierarchical.enabled) {
                     this.centerRoot();
                 }
             }
@@ -192,9 +183,44 @@ class GraphRenderer {
         return this.network;
     }
 
-    // --- Edit Node Callback (FIXED) ---
+    // --- Setup edit events ---
+    setupEditEvents() {
+        if (!this.network) return;
+
+        // Node selection
+        this.network.on('click', (params) => {
+            if (params.nodes.length > 0) {
+                this.selectedNodeId = params.nodes[0];
+                this.selectedEdgeId = null;
+                const node = this.nodes.get(this.selectedNodeId);
+                addDebugLog(`📌 Selected node: ${node?.label || node?.id || 'unknown'}`, 'info');
+            } else if (params.edges.length > 0) {
+                this.selectedEdgeId = params.edges[0];
+                this.selectedNodeId = null;
+                const edge = this.edges.get(this.selectedEdgeId);
+                addDebugLog(`🔗 Selected edge: ${edge?.label || edge?.id || 'unknown'}`, 'info');
+            }
+        });
+
+        // Double-click to edit node (only in edit mode)
+        this.network.on('doubleClick', (params) => {
+            if (params.nodes.length > 0 && this.editMode) {
+                const nodeId = params.nodes[0];
+                const node = this.nodes.get(nodeId);
+                if (node) {
+                    this.editNodeCallback(node, (updated) => {
+                        if (updated) {
+                            this.nodes.update(updated);
+                            addDebugLog(`✏️ Updated node: ${updated.label}`, 'success');
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // --- Edit Node Callback ---
     editNodeCallback(data, callback) {
-        // data = { id, label, type, ... }
         const newLabel = prompt('✏️ Edit node label:', data.label || data.id);
         if (newLabel !== null && newLabel.trim()) {
             data.label = newLabel.trim();
@@ -205,7 +231,7 @@ class GraphRenderer {
         }
     }
 
-    // --- Edit Edge Callback (FIXED) ---
+    // --- Edit Edge Callback ---
     editEdgeCallback(data, callback) {
         const newLabel = prompt('🔗 Edit edge label:', data.label || '');
         if (newLabel !== null) {
@@ -233,21 +259,21 @@ class GraphRenderer {
             const type = (node.type || 'default').toLowerCase();
             const colors = typeColors[type] || typeColors.default;
 
-            // Node shape based on type
             if (isUML) {
                 node.shape = 'box';
                 node.shapeProperties = { borderRadius: 6 };
             }
 
-            // Multi-font label with icon and type
+            // Multi-font label
+            let label = node.label || node.id;
             if (node.type && node.type !== 'default') {
                 const icon = typeColors[node.type.toLowerCase()]?.icon || '';
-                node.label = `<b>${icon} ${node.label || node.id}</b>`;
-                // Add type as subtitle
+                label = `<b>${icon} ${label}</b>`;
                 if (node.stereotype) {
-                    node.label += `\n<i>«${node.stereotype}»</i>`;
+                    label += `\n<i>«${node.stereotype}»</i>`;
                 }
             }
+            node.label = label;
 
             node.color = {
                 background: colors.bg,
@@ -272,7 +298,6 @@ class GraphRenderer {
                 }
             };
 
-            node.padding = 12;
             node.borderWidth = 2;
             node.borderWidthSelected = 4;
             node.shadow = {
@@ -284,41 +309,33 @@ class GraphRenderer {
             };
         });
 
-        // --- Edge styling with UML relationship types ---
+        // Edge styling
         if (graphData.edges) {
             graphData.edges.forEach(edge => {
-                // Detect relationship type from label or type
                 const label = (edge.label || '').toLowerCase();
                 let arrowType = 'to';
                 let dashPattern = false;
                 let relationshipLabel = edge.label || '';
 
                 if (label.includes('extends') || label.includes('inherits')) {
-                    arrowType = 'to';
                     dashPattern = false;
                     relationshipLabel = '▲ extends';
                 } else if (label.includes('implements')) {
-                    arrowType = 'to';
                     dashPattern = true;
                     relationshipLabel = '△ implements';
                 } else if (label.includes('association')) {
-                    arrowType = 'to';
                     dashPattern = false;
                     relationshipLabel = '▸ association';
                 } else if (label.includes('aggregation')) {
-                    arrowType = 'to';
                     dashPattern = false;
                     relationshipLabel = '◇ aggregation';
                 } else if (label.includes('composition')) {
-                    arrowType = 'to';
                     dashPattern = false;
                     relationshipLabel = '◆ composition';
                 } else if (label.includes('dependency')) {
-                    arrowType = 'to';
                     dashPattern = true;
                     relationshipLabel = '⇢ dependency';
                 } else if (label.includes('realization')) {
-                    arrowType = 'to';
                     dashPattern = true;
                     relationshipLabel = '⚡ realization';
                 }
@@ -440,20 +457,21 @@ class GraphRenderer {
         const isHierarchical = type === 'hierarchical' || 
                               (type === 'auto' && this.detectUML(currentData));
         
+        const hierarchicalOptions = {
+            enabled: isHierarchical,
+            direction: 'UD',
+            sortMethod: 'directed',
+            nodeSpacing: 150,
+            levelSeparation: 200,
+            treeSpacing: 200,
+            blockShifting: true,
+            edgeMinimization: true,
+            parentCentralization: true
+        };
+        
         const options = {
             layout: {
-                hierarchical: {
-                    enabled: isHierarchical,
-                    direction: 'UD',
-                    sortMethod: 'directed',
-                    nodeSpacing: 200,
-                    levelSeparation: 250,
-                    treeSpacing: 200,
-                    blockShifting: true,
-                    edgeMinimization: true,
-                    parentCentralization: true,
-                    overlapAvoidance: true
-                },
+                hierarchical: hierarchicalOptions,
                 randomSeed: 42,
                 improvedLayout: true
             },
@@ -466,15 +484,10 @@ class GraphRenderer {
                     centralGravity: 0.01,
                     springLength: 150,
                     springConstant: 0.08,
-                    damping: 0.4,
-                    avoidOverlap: 0.5
+                    damping: 0.4
                 }
             }
         };
-        
-        if (!isHierarchical) {
-            options.layout.hierarchical.enabled = false;
-        }
         
         this.network.setOptions(options);
         this.currentLayout = isHierarchical ? 'hierarchical' : 'force';
