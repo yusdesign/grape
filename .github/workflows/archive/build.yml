@@ -98,3 +98,12 @@ jobs:
         with:
           name: grape-${{ github.event.inputs.build_type || 'debug' }}-${{ github.sha }}
           path: android/app/build/outputs/apk/**/*.apk
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./www
+          publish_branch: gh-pages
+          force_orphan: true
