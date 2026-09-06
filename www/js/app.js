@@ -128,9 +128,10 @@ class GrapeApp {
         const menuPickFile = document.getElementById('menuPickFile');
         const menuExport = document.getElementById('menuExport');
         const menuLayout = document.getElementById('menuLayout');
+        const menuEditToggle = document.getElementById('menuEditToggle');
         const menuReset = document.getElementById('menuReset');
         const menuShare = document.getElementById('menuShare');
-
+        
         if (menuLoadURL) {
             menuLoadURL.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -166,6 +167,16 @@ class GrapeApp {
                 e.stopPropagation();
                 this.addDebugLog('📐 Menu: Switch Layout clicked', 'info');
                 this.switchLayout();
+                this.isMenuOpen = false;
+                document.getElementById('menuDropdown').style.display = 'none';
+            });
+        }
+
+        if (menuEditToggle) {
+            menuEditToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('✏️ Menu: Toggle Edit Mode clicked', 'info');
+                this.toggleEditMode();
                 this.isMenuOpen = false;
                 document.getElementById('menuDropdown').style.display = 'none';
             });
@@ -508,6 +519,29 @@ class GrapeApp {
         const layoutLabel = document.getElementById('layoutLabel');
         if (layoutLabel) {
             layoutLabel.textContent = `📐 ${next}`;
+        }
+    }
+
+    // --- Toggle Edit Mode ---
+    toggleEditMode() {
+        if (!this.renderer || !this.renderer.network) {
+            this.addDebugLog('⚠️ No graph to edit', 'warn');
+            this.showToast('No graph to edit', 'error');
+            return;
+        }
+        
+        const enabled = this.renderer.toggleEditMode();
+        this.addDebugLog(`✏️ Edit mode ${enabled ? 'enabled' : 'disabled'}`, 'info');
+        this.showToast(`Edit mode ${enabled ? 'ON' : 'OFF'}`, enabled ? 'success' : 'info');
+        
+        // Update status
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            if (enabled) {
+                statusEl.textContent = '✏️ Edit mode ON - click nodes/edges to select, double-click to edit';
+            } else {
+                statusEl.textContent = 'Ready';
+            }
         }
     }
 
