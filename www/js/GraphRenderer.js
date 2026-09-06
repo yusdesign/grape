@@ -168,6 +168,28 @@ class GraphRenderer {
             { ...defaultOptions, ...options }
         );
 
+        // Detect if this is an SVG graph
+        this.isSVG = this.detectSVGGraph(graphData);
+        
+        if (this.isSVG) {
+            addDebugLog('🔍 SVG graph detected, applying tree layout', 'info');
+            // Apply proper hierarchical layout for SVG
+            this.applyHierarchicalLayout({
+                method: 'direction',
+                shakeTowards: 'roots',
+                nodeSpacing: 150,
+                levelSeparation: 220
+            });
+        } else if (isUML) {
+            addDebugLog('🔍 UML graph detected, applying hierarchical layout', 'info');
+            this.applyHierarchicalLayout({
+                method: 'hubsize',
+                shakeTowards: 'leaves',
+                nodeSpacing: 150,
+                levelSeparation: 200
+            });
+        }
+
         // --- Setup edit events (after network created) ---
         this.setupEditEvents();
 
@@ -183,7 +205,199 @@ class GraphRenderer {
         return this.network;
     }
 
+    // --- Apply Hierarchical Layout with Methods ---
+    applyHierarchicalLayout(options = {}) {
+        if (!this.network) return;
+        
+        const method = options.method || 'hubsize'; // 'hubsize', 'direction', 'directed'
+        const shakeTowards = options.shakeTowards || 'leaves'; // 'leaves', 'roots'
+        const nodeSpacing = options.nodeSpacing || 150;
+        const levelSeparation = options.levelSeparation || 200;
+        
+        let sortMethod = 'hubsize';
+        if (method === 'direction') {
+            sortMethod = 'directed';
+        } else if (method === 'hubsize') {
+            sortMethod = 'hubsize';
+        }
+        
+        // For SVG tree: force directed layout with proper hierarchy
+        const hierarchicalOptions = {
+            enabled: true,
+            direction: 'UD',        // Up-Down (root at top)
+            sortMethod: sortMethod,
+            shakeTowards: shakeTowards,
+            nodeSpacing: nodeSpacing,
+            levelSeparation: levelSeparation,
+            treeSpacing: 200,
+            blockShifting: true,
+            edgeMinimization: true,
+            parentCentralization: true
+        };
+        
+        // If this is an SVG, we want to detect roots and build proper tree
+        if (this.isSVG) {
+            // Force root detection for SVG
+            const rootNodes = this.findRootNodes();
+            if (rootNodes.length > 0) {
+                // Move roots to top
+                hierarchicalOptions.shakeTowards = 'roots';
+                hierarchicalOptions.sortMethod = 'directed';
+            }
+        }
+        
+        this.network.setOptions({
+            layout: {
+                hierarchical: hierarchicalOptions,
+                improvedLayout: true,
+                randomSeed: 42
+            },
+            physics: {
+                enabled: false, // Disable physics for stable hierarchy
+                stabilization: { iterations: 100 }
+            }
+        });
+        
+        // Auto-fit after layout change
+        setTimeout(() => {
+            if (this.network) {
+                this.network.fit();
+                // Center the root
+                const roots = this.findRootNodes();
+                if (roots.length > 0) {
+                    this.network.focus(roots[0].id, { scale: 0.8, animation: true });
+                }
+            }
+        }, 500);
+        
+        this.currentLayout = 'hierarchical';
+        addDebugLog(`📐 Hierarchical layout applied: ${method}, shakeTowards: ${shakeTowards}`, 'success');
+    }
+
+    // --- Find Root Nodes (nodes with no parents) ---
+    findRootNodes() {
+        const parents = new Set();
+        this.edges.forEach(edge => {
+            parents.add(edge.to);
+        });
+        
+        const roots = [];
+        this.nodes.forEach(node => {
+            if (!parents.has(node.id)) {
+                roots.push(node);
+            }
+        });
+        
+        // If no roots found (cycle), find nodes with most outgoing edges
+        if (roots.length === 0) {
+            const edgeCount = new Map();
+            this.edges.forEach(edge => {
+                edgeCount.set(edge.from, (edgeCount.get(edge.from) || 0) + 1);
+            });
+            let maxCount = 0;
+            this.nodes.forEach(node => {
+                const count = edgeCount.get(node.id) || 0;
+                if (count > maxCount) {
+                    maxCount = count;
+                    roots.length = 0;
+                    roots.push(node);
+                } else if (count === maxCount && count > 0) {
+                    roots.push(node);
+                }
+            });
+        }
+        
+        return roots;
+    }
+    
+    // --- Detect if graph is SVG-based ---
+    detectSVGGraph(graphData) {
+        if (!graphData || !graphData.nodes) return false;
+        
+        // Check if nodes have SVG-like attributes
+        let svgScore = 0;
+        graphData.nodes.forEach(node => {
+            const label = (node.label || '').toLowerCase();
+            if (label.includes('svg') || label.includes('path') || 
+                label.includes('rect') || label.includes('circle') ||
+                label.includes('g ') || label.includes('group')) {
+                svgScore++;
+            }
+            if (node.type && node.type === 'svg') svgScore++;
+        });
+        
+        // Check edges for SVG relationships
+        if (graphData.edges) {
+            graphData.edges.forEach(edge => {
+                const label = (edge.label || '').toLowerCase();
+                if (label.includes('contains') || label.includes('child')) {
+                    svgScore++;
+                }
+            });
+        }
+        
+        const threshold = graphData.nodes.length * 0.3;
+        return svgScore > threshold;
+    }
+    
     // --- GRAPE LAYOUT: Hierarchical tree analyzer ---
+    // --- Grape Tree Layout (for SVG/XML) ---
+    applyGrapeLayout(animation = true) {
+        if (!this.network) return;
+        
+        const treeData = this.analyzeTree();
+        if (!treeData || !treeData.positions) {
+            addDebugLog('⚠️ Could not analyze tree structure', 'warn');
+            return;
+        }
+    
+        // Update node positions
+        Object.entries(treeData.positions).forEach(([nodeId, pos]) => {
+            this.nodes.update({
+                id: nodeId,
+                x: pos.x,
+                y: pos.y,
+                fixed: true
+            });
+        });
+    
+        // Apply hierarchical layout with grape settings
+        this.network.setOptions({
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'UD',
+                    sortMethod: 'directed',
+                    shakeTowards: 'roots',
+                    nodeSpacing: 180,
+                    levelSeparation: 220,
+                    treeSpacing: 180,
+                    blockShifting: true,
+                    edgeMinimization: true,
+                    parentCentralization: true
+                },
+                improvedLayout: true,
+                randomSeed: 42
+            },
+            physics: {
+                enabled: false
+            }
+        });
+    
+        setTimeout(() => {
+            if (this.network) {
+                this.network.fit({ animation });
+                // Center on root
+                const roots = this.findRootNodes();
+                if (roots.length > 0) {
+                    this.network.focus(roots[0].id, { scale: 0.8, animation: true });
+                }
+                addDebugLog(`🍇 Grape tree layout applied (${Object.keys(treeData.positions).length} nodes positioned)`, 'success');
+            }
+        }, 100);
+    }
+    
+    // --- Enhanced tree analyzer for SVG/XML ---
     analyzeTree() {
         if (!this.nodes || !this.edges) return null;
         
@@ -194,7 +408,8 @@ class GraphRenderer {
                 children: [],
                 parents: [],
                 level: 0,
-                visited: false
+                visited: false,
+                svgType: node.type || 'unknown'
             };
         });
     
@@ -207,34 +422,63 @@ class GraphRenderer {
         });
     
         // Find root nodes (no parents)
-        const roots = [];
+        let roots = [];
         Object.values(nodeMap).forEach(node => {
             if (node.parents.length === 0) {
                 roots.push(node.id);
             }
         });
     
-        // If no roots found (disconnected graph), use all nodes
+        // If no roots found (disconnected graph or cycle), find SVG container nodes
         if (roots.length === 0) {
-            Object.values(nodeMap).forEach(node => {
-                roots.push(node.id);
-            });
+            // Look for SVG root elements (like <svg>, <g>, etc.)
+            const svgRoots = Object.values(nodeMap)
+                .filter(node => {
+                    const label = (node.label || '').toLowerCase();
+                    return label === 'svg' || label.includes('svg') || 
+                           (node.svgType === 'svg' || node.svgType === 'group');
+                })
+                .map(node => node.id);
+            
+            if (svgRoots.length > 0) {
+                roots = svgRoots;
+            } else {
+                // Fallback: use all nodes
+                roots = Object.keys(nodeMap);
+            }
         }
     
         // Assign levels (BFS from roots)
         const queue = roots.map(id => ({ id, level: 0 }));
+        const visited = new Set();
+        
         while (queue.length > 0) {
             const current = queue.shift();
-            const node = nodeMap[current.id];
-            if (node.visited) continue;
-            node.visited = true;
-            node.level = current.level;
+            if (visited.has(current.id)) continue;
+            visited.add(current.id);
             
-            node.children.forEach(childId => {
-                if (!nodeMap[childId].visited) {
-                    queue.push({ id: childId, level: current.level + 1 });
-                }
-            });
+            const node = nodeMap[current.id];
+            if (node) {
+                node.level = current.level;
+                
+                // Sort children by type (SVG hierarchy)
+                node.children.sort((a, b) => {
+                    const aNode = nodeMap[a];
+                    const bNode = nodeMap[b];
+                    if (!aNode || !bNode) return 0;
+                    // SVG elements have natural order: svg > g > path/rect/circle
+                    const order = { 'svg': 0, 'g': 1, 'rect': 2, 'circle': 3, 'path': 4, 'default': 5 };
+                    const aOrder = order[aNode.type || 'default'] || 5;
+                    const bOrder = order[bNode.type || 'default'] || 5;
+                    return aOrder - bOrder;
+                });
+                
+                node.children.forEach(childId => {
+                    if (!visited.has(childId) && nodeMap[childId]) {
+                        queue.push({ id: childId, level: current.level + 1 });
+                    }
+                });
+            }
         }
     
         // Calculate positions based on levels
@@ -268,50 +512,12 @@ class GraphRenderer {
             });
         });
     
-        return { positions, rootIds: roots, maxLevel };
-    }
-    
-    // --- Apply Grape Layout ---
-    applyGrapeLayout(animation = true) {
-        if (!this.network) return;
-        
-        const treeData = this.analyzeTree();
-        if (!treeData || !treeData.positions) {
-            addDebugLog('⚠️ Could not analyze tree structure', 'warn');
-            return;
-        }
-    
-        // Update node positions
-        Object.entries(treeData.positions).forEach(([nodeId, pos]) => {
-            this.nodes.update({
-                id: nodeId,
-                x: pos.x,
-                y: pos.y,
-                fixed: true
-            });
-        });
-    
-        // Update layout options
-        this.network.setOptions({
-            physics: {
-                enabled: false
-            },
-            layout: {
-                hierarchical: {
-                    enabled: true,
-                    direction: 'UD',
-                    nodeSpacing: 200,
-                    levelSeparation: 250,
-                    treeSpacing: 200
-                }
-            }
-        });
-    
-        // Move view to fit all nodes
-        setTimeout(() => {
-            this.network.fit({ animation });
-            addDebugLog(`📐 Grape layout applied (${Object.keys(treeData.positions).length} nodes positioned)`, 'success');
-        }, 100);
+        return { 
+            positions, 
+            rootIds: roots, 
+            maxLevel,
+            nodeMap 
+        };
     }
 
     // --- Setup edit events ---
