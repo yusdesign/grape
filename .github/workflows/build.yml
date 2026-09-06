@@ -1,11 +1,27 @@
-name: Build Grape Capacitor
+name: Build Capacitor APK
 
 on:
   push:
     branches: [ main, develop ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      clean_build:
+        description: 'Clean build (remove android folder)'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   build:
@@ -34,22 +50,51 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --no-audit --no-fund --legacy-peer-deps
-          npm install -D @capacitor/cli
-          npm install @capacitor/android @capacitor/core @capacitor/filesystem @capawesome/capacitor-file-picker @capawesome/capacitor-asset-manager vis-network html2canvas
+          npm install -g @capacitor/cli
 
-      - name: Build Android APK
+      - name: Clean build (if requested)
+        if: github.event.inputs.clean_build == 'true' || github.event_name == 'push'
         run: |
-          # Clean and rebuild Android platform
-          rm -rf android
+          rm -rf android/
+          echo "✅ Clean build requested"
+
+      - name: Add Android platform
+        run: |
           npx cap add android
           npx cap sync
-          
+
+      - name: Create file_paths.xml
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/file_paths.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+              <files-path name="files" path="." />
+              <cache-path name="cache" path="." />
+              <external-files-path name="external-files" path="." />
+              <external-cache-path name="external-cache" path="." />
+              <external-path name="external" path="." />
+          </paths>
+          EOF
+          echo "✅ file_paths.xml created"
+
+      - name: Build APK
+        run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          if [ "${{ github.event.inputs.build_type }}" == "release" ] || [ "${{ github.ref }}" == refs/tags/v* ]; then
+            echo "📦 Building RELEASE APK..."
+            ./gradlew assembleRelease
+            APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          else
+            echo "📦 Building DEBUG APK..."
+            ./gradlew assembleDebug
+            APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          fi
+          echo "✅ APK built at: $APK_PATH"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: grape-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: grape-${{ github.event.inputs.build_type || 'debug' }}-${{ github.sha }}
+          path: android/app/build/outputs/apk/**/*.apk
