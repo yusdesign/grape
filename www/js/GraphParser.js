@@ -253,6 +253,7 @@ class GraphParser {
         }
     }
 
+    // www/js/GraphParser.js - FIXED parseHTML()
     parseHTML(htmlString) {
         console.log('📊 parseHTML() called');
         addDebugLog('📊 Parsing HTML...', 'info');
@@ -263,16 +264,45 @@ class GraphParser {
             
             const nodes = [];
             const edges = [];
+            const idMap = new Map();
             
             elements.forEach(el => {
-                const id = el.id || el.className?.replace(/\s/g, '_') || el.tagName;
-                const uniqueId = `${el.tagName}_${id}_${Math.random().toString(36).substr(2, 4)}`;
-                const label = el.tagName + (el.id ? `#${el.id}` : '');
-                nodes.push({ id: uniqueId, label, type: 'html' });
+                // Fix: handle className safely (could be DOMTokenList)
+                let className = '';
+                if (el.className) {
+                    if (typeof el.className === 'string') {
+                        className = el.className.replace(/\s/g, '_');
+                    } else if (el.className.toString) {
+                        className = el.className.toString().replace(/\s/g, '_');
+                    }
+                }
                 
-                if (el.parentElement && el.parentElement.tagName !== 'BODY') {
-                    const parentId = el.parentElement.id || el.parentElement.className?.replace(/\s/g, '_') || el.parentElement.tagName;
+                const id = el.id || className || el.tagName;
+                const uniqueId = `${el.tagName}_${id}_${Math.random().toString(36).substr(2, 4)}`;
+                const label = el.tagName + (el.id ? `#${el.id}` : '') + (className ? `.${className}` : '');
+                
+                if (!idMap.has(uniqueId)) {
+                    idMap.set(uniqueId, { id: uniqueId, label, type: 'html' });
+                    nodes.push(idMap.get(uniqueId));
+                }
+                
+                if (el.parentElement && el.parentElement.tagName !== 'BODY' && el.parentElement.tagName !== 'HTML') {
+                    let parentClassName = '';
+                    if (el.parentElement.className) {
+                        if (typeof el.parentElement.className === 'string') {
+                            parentClassName = el.parentElement.className.replace(/\s/g, '_');
+                        } else if (el.parentElement.className.toString) {
+                            parentClassName = el.parentElement.className.toString().replace(/\s/g, '_');
+                        }
+                    }
+                    const parentId = el.parentElement.id || parentClassName || el.parentElement.tagName;
                     const parentUniqueId = `${el.parentElement.tagName}_${parentId}_${Math.random().toString(36).substr(2, 4)}`;
+                    
+                    if (!idMap.has(parentUniqueId)) {
+                        idMap.set(parentUniqueId, { id: parentUniqueId, label: el.parentElement.tagName, type: 'html' });
+                        nodes.push(idMap.get(parentUniqueId));
+                    }
+                    
                     edges.push({ from: parentUniqueId, to: uniqueId, label: 'contains' });
                 }
             });
