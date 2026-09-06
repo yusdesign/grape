@@ -1,12 +1,63 @@
 // www/js/app.js
-// Fallback if addDebugLog is not defined globally
-if (typeof addDebugLog === 'undefined') {
-    window.addDebugLog = function(message, type = 'info') {
+class GrapeApp {
+    constructor() {
+        this.parser = new GraphParser();
+        this.renderer = null;
+        this.currentData = null;
+        this.isMenuOpen = false;
+        this.debugLines = [];
+        this.maxDebugLines = 50;
+    }
+
+    init() {
+        console.log('🍇 GrapeApp.init() called');
+        this.addDebugLog('🍇 Grape app starting...', 'success');
+        
+        // Check system
+        if (typeof checker !== 'undefined' && checker.allGreen) {
+            this.addDebugLog('✅ System check passed', 'success');
+        } else {
+            this.addDebugLog('⚠️ System check not complete', 'warn');
+        }
+        
+        // Setup UI
+        this.setupMenu();
+        this.setupButtons();
+        this.setupFileInput();
+        
+        // Update status
+        this.updateStatus('Ready - tap Sample or Open File');
+        this.addDebugLog('🍇 Grape ready!', 'success');
+    }
+
+    // --- Toast System (FIXED) ---
+    showToast(message, type = 'info') {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+        
+        // Also log to debug console
+        this.addDebugLog(`📢 ${message}`, type);
+    }
+
+    // --- Debug Console ---
+    addDebugLog(message, type = 'info') {
         const debugEl = document.getElementById('debugConsole');
         if (!debugEl) {
             console.log(`[${type}] ${message}`);
             return;
         }
+        
         const colors = {
             error: '#ff4444',
             warn: '#ffaa00',
@@ -14,147 +65,219 @@ if (typeof addDebugLog === 'undefined') {
             success: '#44ff88',
             debug: '#888888'
         };
+        
         const div = document.createElement('div');
         div.style.color = colors[type] || '#ffffff';
         const timestamp = new Date().toLocaleTimeString();
         div.textContent = `[${timestamp}] ${message}`;
         debugEl.appendChild(div);
-        while (debugEl.children.length > 50) {
+        
+        // Keep only last N lines
+        while (debugEl.children.length > this.maxDebugLines) {
             debugEl.removeChild(debugEl.firstChild);
         }
+        
         debugEl.scrollTop = debugEl.scrollHeight;
         console.log(`[${type}] ${message}`);
-    };
-    console.log('✅ addDebugLog fallback defined in app.js');
-}
-
-class GrapeApp {
-    constructor() {
-        this.parser = new GraphParser();
-        this.renderer = null;
-        this.currentData = null;
-        this.isMenuOpen = false;
     }
 
-    init() {
-        console.log('🍇 GrapeApp.init() called');
-        addDebugLog('🍇 Grape app starting...', 'success');
-        
-        if (!checker || !checker.allGreen) {
-            console.warn('⚠️ System not ready, waiting...');
-            addDebugLog('⚠️ System not ready', 'warn');
-            document.getElementById('status').textContent = '⚠️ System not ready';
-            return;
+    // --- Status Update ---
+    updateStatus(message, isLoading = false) {
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            if (isLoading) {
+                statusEl.innerHTML = `<span class="loading"></span> ${message}`;
+            } else {
+                statusEl.textContent = message;
+            }
         }
-
-        // Setup hamburger menu
-        this.setupMenu();
-        
-        // Setup buttons
-        const sampleBtn = document.getElementById('sampleBtn');
-        if (sampleBtn) {
-            sampleBtn.addEventListener('click', () => this.loadSample());
-            console.log('✅ Sample button bound');
-        } else {
-            console.error('❌ sampleBtn not found');
-        }
-        
-        console.log('🍇 grape ready!');
-        addDebugLog('🍇 Grape ready!', 'success');
+        this.addDebugLog(`📊 ${message}`, 'info');
     }
 
+    // --- Menu Setup ---
     setupMenu() {
         const menuBtn = document.getElementById('menuBtn');
         const menuDropdown = document.getElementById('menuDropdown');
         
-        if (menuBtn && menuDropdown) {
-            menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.isMenuOpen = !this.isMenuOpen;
-                menuDropdown.style.display = this.isMenuOpen ? 'block' : 'none';
-            });
-            
-            // Close menu when clicking outside
-            document.addEventListener('click', () => {
+        if (!menuBtn || !menuDropdown) {
+            console.error('❌ Menu elements not found');
+            this.addDebugLog('❌ Menu elements not found', 'error');
+            return;
+        }
+        
+        this.addDebugLog('🔧 Setting up menu...', 'debug');
+        
+        // Toggle menu on button click
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.isMenuOpen = !this.isMenuOpen;
+            menuDropdown.style.display = this.isMenuOpen ? 'block' : 'none';
+            this.addDebugLog(`📋 Menu ${this.isMenuOpen ? 'opened' : 'closed'}`, 'debug');
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (this.isMenuOpen && !menuDropdown.contains(e.target) && e.target !== menuBtn) {
                 this.isMenuOpen = false;
                 menuDropdown.style.display = 'none';
-            });
-            
-            // Menu items
-            document.getElementById('menuPickFile').addEventListener('click', () => {
+            }
+        });
+        
+        // Menu items
+        const menuPickFile = document.getElementById('menuPickFile');
+        const menuExport = document.getElementById('menuExport');
+        const menuReset = document.getElementById('menuReset');
+        const menuShare = document.getElementById('menuShare');
+        
+        if (menuPickFile) {
+            menuPickFile.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('📂 Menu: Open File clicked', 'info');
                 this.pickFile();
                 this.isMenuOpen = false;
                 menuDropdown.style.display = 'none';
             });
-            
-            document.getElementById('menuExport').addEventListener('click', () => {
+        }
+        
+        if (menuExport) {
+            menuExport.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('💾 Menu: Export clicked', 'info');
                 this.exportGraph();
                 this.isMenuOpen = false;
                 menuDropdown.style.display = 'none';
             });
-            
-            document.getElementById('menuReset').addEventListener('click', () => {
+        }
+        
+        if (menuReset) {
+            menuReset.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('🔄 Menu: Reset clicked', 'info');
                 this.resetView();
                 this.isMenuOpen = false;
                 menuDropdown.style.display = 'none';
             });
-            
-            document.getElementById('menuShare').addEventListener('click', () => {
+        }
+        
+        if (menuShare) {
+            menuShare.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('📤 Menu: Share clicked', 'info');
                 this.shareGraph();
                 this.isMenuOpen = false;
                 menuDropdown.style.display = 'none';
             });
-            
-            console.log('✅ Menu setup complete');
+        }
+        
+        this.addDebugLog('✅ Menu setup complete', 'success');
+    }
+
+    // --- Buttons Setup ---
+    setupButtons() {
+        const sampleBtn = document.getElementById('sampleBtn');
+        if (sampleBtn) {
+            sampleBtn.addEventListener('click', () => {
+                this.addDebugLog('📄 Sample button clicked', 'info');
+                this.loadSample();
+            });
+            this.addDebugLog('✅ Sample button bound', 'debug');
         } else {
-            console.warn('⚠️ Menu elements not found');
+            this.addDebugLog('❌ sampleBtn not found', 'error');
         }
     }
 
+    // --- File Input Setup ---
+    setupFileInput() {
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                this.addDebugLog(`📄 File selected: ${file.name} (${file.size} bytes)`, 'info');
+                this.updateStatus(`Loading ${file.name}...`, true);
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    this.addDebugLog(`📖 File read, ${content.length} bytes`, 'info');
+                    this.processFileContent(content, file.name, file.type);
+                };
+                reader.onerror = (e) => {
+                    this.addDebugLog(`❌ File read error: ${e.message}`, 'error');
+                    this.updateStatus('Error reading file');
+                };
+                reader.readAsText(file);
+                fileInput.value = ''; // Reset
+            });
+            this.addDebugLog('✅ File input bound', 'debug');
+        } else {
+            this.addDebugLog('❌ fileInput not found', 'error');
+        }
+    }
+
+    // --- Process File Content ---
+    processFileContent(content, filename, mimeType) {
+        this.addDebugLog(`🔍 Processing: ${filename} (${mimeType})`, 'info');
+        this.updateStatus(`Parsing ${filename}...`, true);
+        
+        try {
+            // Determine mime type from extension if needed
+            if (!mimeType || mimeType === '') {
+                const ext = filename.split('.').pop().toLowerCase();
+                const mimeMap = {
+                    'json': 'application/json',
+                    'xml': 'text/xml',
+                    'html': 'text/html',
+                    'htm': 'text/html',
+                    'svg': 'image/svg+xml',
+                    'txt': 'text/plain'
+                };
+                mimeType = mimeMap[ext] || 'application/json';
+                this.addDebugLog(`📋 Detected MIME: ${mimeType}`, 'debug');
+            }
+            
+            this.currentData = this.parser.parse(content, mimeType);
+            
+            if (!this.currentData.nodes || this.currentData.nodes.length === 0) {
+                this.addDebugLog('⚠️ No nodes found in parsed data', 'warn');
+                this.updateStatus('No graph nodes found');
+                return;
+            }
+            
+            this.addDebugLog(`✅ Parsed: ${this.currentData.nodes.length} nodes, ${this.currentData.edges?.length || 0} edges`, 'success');
+            this.renderGraph();
+            this.updateStatus(`Loaded ${filename} (${this.currentData.nodes.length} nodes)`);
+            
+        } catch (e) {
+            this.addDebugLog(`❌ Parse error: ${e.message}`, 'error');
+            this.updateStatus(`Error: ${e.message}`);
+        }
+    }
+
+    // --- Pick File ---
     async pickFile() {
-        console.log('📂 pickFile() called');
-        addDebugLog('📂 Opening file picker...', 'info');
+        this.addDebugLog('📂 Opening file picker...', 'info');
+        this.updateStatus('Opening file picker...', true);
+        
         const picker = new FilePicker();
         const file = await picker.pickFile();
         
         if (!file) {
-            console.log('❌ No file selected');
-            addDebugLog('❌ No file selected', 'error');
-            document.getElementById('status').textContent = 'No file selected';
+            this.addDebugLog('❌ No file selected', 'warn');
+            this.updateStatus('No file selected');
             return;
         }
 
-        console.log('📄 File selected:', file.name, 'MIME:', file.mimeType);
-        addDebugLog(`📄 Selected: ${file.name}`, 'info');
-        document.getElementById('status').textContent = `Loading ${file.name}...`;
-        
-        try {
-            console.log('🔍 Parsing file content...');
-            addDebugLog('🔍 Parsing content...', 'info');
-            this.currentData = this.parser.parse(file.data, file.mimeType);
-            console.log('✅ Parse complete:', this.currentData);
-            
-            if (!this.currentData.nodes || this.currentData.nodes.length === 0) {
-                console.warn('⚠️ No nodes found in parsed data');
-                addDebugLog('⚠️ No nodes found in file', 'warn');
-                document.getElementById('status').textContent = 'No graph nodes found';
-                return;
-            }
-            
-            this.renderGraph();
-            document.getElementById('status').textContent = `Loaded ${file.name} (${this.currentData.nodes.length} nodes)`;
-            console.log(`✅ Loaded ${file.name} with ${this.currentData.nodes.length} nodes and ${this.currentData.edges?.length || 0} edges`);
-            addDebugLog(`✅ Loaded ${this.currentData.nodes.length} nodes`, 'success');
-        } catch (e) {
-            console.error('❌ Error loading file:', e.message);
-            addDebugLog('❌ Error: ' + e.message, 'error');
-            document.getElementById('status').textContent = `Error: ${e.message}`;
-        }
+        this.addDebugLog(`📄 Selected: ${file.name} (${file.mimeType})`, 'success');
+        this.processFileContent(file.data, file.name, file.mimeType);
     }
 
+    // --- Load Sample ---
     loadSample() {
-        console.log('📄 loadSample() called');
-        addDebugLog('📄 Loading sample...', 'info');
+        this.addDebugLog('📄 Loading sample data...', 'info');
+        this.updateStatus('Loading sample...', true);
+        
         const sample = {
             nodes: [
                 { id: 1, label: 'User', shape: 'box', color: '#FF6B6B' },
@@ -166,38 +289,66 @@ class GrapeApp {
                 { from: 2, to: 3, label: 'contains' }
             ]
         };
-        console.log('📊 Sample data:', sample);
+        
+        this.addDebugLog(`📊 Sample: ${sample.nodes.length} nodes, ${sample.edges.length} edges`, 'info');
         this.currentData = sample;
         this.renderGraph();
-        document.getElementById('status').textContent = `Loaded sample (${sample.nodes.length} nodes)`;
-        addDebugLog(`✅ Sample loaded (${sample.nodes.length} nodes)`, 'success');
+        this.updateStatus(`Loaded sample (${sample.nodes.length} nodes)`);
+        this.addDebugLog('✅ Sample loaded successfully', 'success');
     }
 
+    // --- Render Graph (FIXED: disable improvedLayout for large graphs) ---
     renderGraph() {
-        console.log('🎨 renderGraph() called');
         if (!this.currentData) {
-            console.warn('⚠️ No data to render');
-            addDebugLog('⚠️ No data to render', 'warn');
+            this.addDebugLog('⚠️ No data to render', 'warn');
             return;
         }
-        console.log('📊 Rendering:', this.currentData.nodes.length, 'nodes,', this.currentData.edges?.length || 0, 'edges');
-        addDebugLog(`🎨 Rendering ${this.currentData.nodes.length} nodes...`, 'info');
         
-        this.renderer = new GraphRenderer('graphContainer');
-        this.renderer.render(this.currentData);
-        document.getElementById('nodeCount').textContent = `${this.currentData.nodes.length} nodes`;
-        console.log('✅ Graph rendered');
-        addDebugLog('✅ Graph rendered', 'success');
+        this.addDebugLog(`🎨 Rendering ${this.currentData.nodes.length} nodes...`, 'info');
+        this.updateStatus('Rendering graph...', true);
+        
+        try {
+            // Check if large graph (>500 nodes)
+            const isLarge = this.currentData.nodes.length > 500;
+            if (isLarge) {
+                this.addDebugLog('⚠️ Large graph detected, disabling physics for performance', 'warn');
+            }
+            
+            this.renderer = new GraphRenderer('graphContainer');
+            this.renderer.render(this.currentData, {
+                physics: {
+                    enabled: !isLarge,  // Disable physics for large graphs
+                    stabilization: false
+                },
+                layout: {
+                    improvedLayout: !isLarge,  // Disable improvedLayout for large graphs
+                    randomSeed: 42
+                }
+            });
+            
+            const nodeCount = document.getElementById('nodeCount');
+            if (nodeCount) {
+                nodeCount.textContent = `${this.currentData.nodes.length} nodes`;
+            }
+            
+            this.addDebugLog('✅ Graph rendered successfully', 'success');
+            this.updateStatus(`Graph rendered (${this.currentData.nodes.length} nodes)`);
+            
+        } catch (e) {
+            this.addDebugLog(`❌ Render error: ${e.message}`, 'error');
+            this.updateStatus(`Render error: ${e.message}`);
+        }
     }
 
+    // --- Export Graph (FIXED: uses this.showToast) ---
     async exportGraph() {
-        console.log('💾 exportGraph() called');
-        addDebugLog('💾 Exporting graph...', 'info');
+        this.addDebugLog('💾 Exporting graph...', 'info');
         if (!this.currentData) {
-            addDebugLog('⚠️ No graph to export', 'warn');
-            showToast('No graph to export', 'error');
+            this.addDebugLog('⚠️ No graph to export', 'warn');
+            this.showToast('No graph to export', 'error');
             return;
         }
+        
         try {
             const data = {
                 nodes: this.currentData.nodes,
@@ -212,33 +363,36 @@ class GrapeApp {
             a.download = `graph_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            addDebugLog('✅ Graph exported', 'success');
-            showToast('✅ Graph exported', 'success');
+            
+            this.addDebugLog('✅ Graph exported successfully', 'success');
+            this.showToast('✅ Graph exported', 'success');
         } catch (e) {
-            console.error('❌ Export error:', e.message);
-            addDebugLog('❌ Export error: ' + e.message, 'error');
-            showToast('Export failed: ' + e.message, 'error');
+            this.addDebugLog(`❌ Export error: ${e.message}`, 'error');
+            this.showToast('Export failed: ' + e.message, 'error');
         }
     }
 
+    // --- Reset View (FIXED: uses this.showToast) ---
     resetView() {
-        console.log('🔄 resetView() called');
-        addDebugLog('🔄 Resetting view', 'info');
+        this.addDebugLog('🔄 Resetting view...', 'info');
         if (this.renderer && this.renderer.network) {
             this.renderer.network.fit({ animation: true });
-            showToast('View reset', 'info');
-            addDebugLog('✅ View reset', 'success');
+            this.addDebugLog('✅ View reset', 'success');
+            this.showToast('View reset', 'info');
+        } else {
+            this.addDebugLog('⚠️ No graph to reset', 'warn');
         }
     }
 
+    // --- Share Graph ---
     async shareGraph() {
-        console.log('📤 shareGraph() called');
-        addDebugLog('📤 Sharing graph...', 'info');
+        this.addDebugLog('📤 Sharing graph...', 'info');
         if (!this.currentData) {
-            addDebugLog('⚠️ No graph to share', 'warn');
-            showToast('No graph to share', 'error');
+            this.addDebugLog('⚠️ No graph to share', 'warn');
+            this.showToast('No graph to share', 'error');
             return;
         }
+        
         try {
             const data = {
                 nodes: this.currentData.nodes,
@@ -252,27 +406,54 @@ class GrapeApp {
                     title: 'Graph Data',
                     text: json,
                 });
-                addDebugLog('✅ Shared!', 'success');
-                showToast('✅ Shared!', 'success');
+                this.addDebugLog('✅ Shared!', 'success');
+                this.showToast('✅ Shared!', 'success');
             } else {
                 await navigator.clipboard.writeText(json);
-                addDebugLog('📋 Copied to clipboard', 'success');
-                showToast('📋 Copied to clipboard', 'success');
+                this.addDebugLog('📋 Copied to clipboard', 'success');
+                this.showToast('📋 Copied to clipboard', 'success');
             }
         } catch (e) {
             if (e.name !== 'AbortError') {
-                console.error('❌ Share error:', e.message);
-                addDebugLog('❌ Share error: ' + e.message, 'error');
-                showToast('Share failed: ' + e.message, 'error');
+                this.addDebugLog(`❌ Share error: ${e.message}`, 'error');
+                this.showToast('Share failed: ' + e.message, 'error');
             }
         }
     }
 }
 
-// Start app when DOM is ready
+// --- Global addDebugLog for use in other files ---
+function addDebugLog(message, type = 'info') {
+    if (window.app) {
+        window.app.addDebugLog(message, type);
+    } else {
+        console.log(`[${type}] ${message}`);
+        // Fallback: try to write to debug console directly
+        const debugEl = document.getElementById('debugConsole');
+        if (debugEl) {
+            const colors = {
+                error: '#ff4444',
+                warn: '#ffaa00',
+                info: '#44aaff',
+                success: '#44ff88',
+                debug: '#888888'
+            };
+            const div = document.createElement('div');
+            div.style.color = colors[type] || '#ffffff';
+            const timestamp = new Date().toLocaleTimeString();
+            div.textContent = `[${timestamp}] ${message}`;
+            debugEl.appendChild(div);
+            while (debugEl.children.length > 50) {
+                debugEl.removeChild(debugEl.firstChild);
+            }
+            debugEl.scrollTop = debugEl.scrollHeight;
+        }
+    }
+}
+
+// --- Start app ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log('📄 DOM ready, starting GrapeApp...');
-    const app = new GrapeApp();
-    app.init();
-    window.app = app; // For debugging
+    window.app = new GrapeApp();
+    window.app.init();
 });
