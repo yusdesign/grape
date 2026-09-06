@@ -1,13 +1,21 @@
-/* www/css/style.css - Dark Theme */
+/* --- Dark Theme Variables --- */
 :root {
     --bg-primary: #0d1117;
-    --bg-toolbar: #161b22;
+    --bg-secondary: #161b22;
+    --bg-toolbar: #1a2332;
+    --bg-card: #1c2333;
+    --bg-hover: #2d3748;
     --text-primary: #e6edf3;
     --text-secondary: #8b949e;
     --border-color: #30363d;
     --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-orange: #d29922;
+    --accent-purple: #bc8cff;
+    --shadow: rgba(0, 0, 0, 0.4);
 }
 
+/* --- Reset --- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -17,42 +25,70 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
+/* --- Toolbar --- */
 #toolbar {
     background: var(--bg-toolbar);
-    padding: 8px 12px;
+    padding: 6px 12px;
     display: flex;
     gap: 8px;
     align-items: center;
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
-    min-height: 48px;
+    min-height: 44px;
+    z-index: 10;
+    position: relative;
+}
+
+#brand {
+    font-weight: bold;
+    color: var(--accent-blue);
+    font-size: 16px;
+    margin-right: 8px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border-color);
 }
 
 #toolbar button {
-    background: var(--bg-toolbar);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 4px 12px;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     height: 32px;
+    transition: all 0.2s;
 }
 
 #toolbar button:hover {
+    background: var(--bg-hover);
     border-color: var(--accent-blue);
-    background: #1c2333;
 }
 
-#brand {
-    font-weight: bold;
-    color: #58a6ff;
-    font-size: 16px;
-    margin-right: 12px;
-    padding-right: 12px;
-    border-right: 1px solid var(--border-color);
+#toolbar button#sampleBtn {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: #fff;
+}
+
+#toolbar button#sampleBtn:hover {
+    background: #36a74a;
+}
+
+#toolbar button#menuBtn {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    padding: 0 8px;
+    color: var(--text-secondary);
+}
+
+#toolbar button#menuBtn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
 }
 
 #status {
@@ -60,6 +96,9 @@ body {
     font-size: 12px;
     color: var(--text-secondary);
     padding: 0 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #nodeCount {
@@ -67,21 +106,66 @@ body {
     color: var(--text-secondary);
     padding: 0 8px;
     border-left: 1px solid var(--border-color);
+    white-space: nowrap;
 }
 
+/* --- Dropdown Menu --- */
+#menuDropdown {
+    position: absolute;
+    top: 44px;
+    right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 0;
+    min-width: 160px;
+    z-index: 20;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+#menuDropdown div {
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 13px;
+    transition: background 0.2s;
+}
+
+#menuDropdown div:hover {
+    background: var(--bg-hover);
+}
+
+#menuDropdown div:first-child { border-radius: 8px 8px 0 0; }
+#menuDropdown div:last-child { border-radius: 0 0 8px 8px; }
+
+/* --- Graph Container --- */
 #graphContainer {
     flex: 1;
     background: var(--bg-primary);
     min-height: 0;
+    position: relative;
 }
 
+.vis-network { background: var(--bg-primary) !important; }
+
+.vis-network .vis-tooltip {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+    font-size: 12px !important;
+}
+
+/* --- Debug Console --- */
 #debugConsole {
     background: rgba(0, 0, 0, 0.95);
     color: #0f0;
     font-family: 'Courier New', monospace;
     font-size: 10px;
     padding: 4px 12px;
-    max-height: 100px;
+    max-height: 120px;
     overflow-y: auto;
     flex-shrink: 0;
     border-top: 1px solid #0f0;
@@ -89,10 +173,93 @@ body {
     min-height: 50px;
 }
 
-/* vis-network dark overrides */
-.vis-network { background: var(--bg-primary) !important; }
-.vis-tooltip {
-    background: var(--bg-toolbar) !important;
-    border: 1px solid var(--border-color) !important;
-    color: var(--text-primary) !important;
+#debugConsole .log-error { color: #ff4444; }
+#debugConsole .log-warn { color: #ffaa00; }
+#debugConsole .log-info { color: #44aaff; }
+#debugConsole .log-success { color: #44ff88; }
+#debugConsole .log-debug { color: #888888; }
+
+#debugConsole::-webkit-scrollbar { width: 4px; }
+#debugConsole::-webkit-scrollbar-track { background: #111; }
+#debugConsole::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+/* --- Toast --- */
+.toast {
+    position: fixed;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    max-width: 80%;
+}
+
+.toast.show { opacity: 1; }
+.toast.error { border-color: var(--accent-red); color: var(--accent-red); }
+.toast.success { border-color: var(--accent-green); color: var(--accent-green); }
+.toast.info { border-color: var(--accent-blue); color: var(--accent-blue); }
+
+/* --- Loading Spinner --- */
+.loading {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--accent-blue);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Context Menu --- */
+#contextMenu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    min-width: 150px;
+}
+
+#contextMenuContent { color: var(--text-primary); }
+#contextMenuContent button {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 12px;
+}
+#contextMenuContent button:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-blue);
+}
+
+/* --- Mobile --- */
+@media (max-width: 640px) {
+    #toolbar { padding: 4px 8px; gap: 4px; min-height: 40px; }
+    #toolbar button { font-size: 11px; padding: 2px 8px; height: 28px; }
+    #brand { font-size: 14px; margin-right: 4px; padding-right: 8px; }
+    #status { font-size: 10px; }
+    #nodeCount { font-size: 9px; padding: 0 4px; }
+    #debugConsole { font-size: 9px; max-height: 80px; min-height: 40px; }
+    #menuDropdown { min-width: 140px; }
+    #menuDropdown div { font-size: 12px; padding: 6px 12px; }
 }
