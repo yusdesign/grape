@@ -14,6 +14,9 @@ class GraphRenderer {
         this.nodes.add(graphData.nodes);
         this.edges.add(graphData.edges);
 
+        // Detect large graph
+        const isLarge = graphData.nodes.length > 500;
+
         const defaultOptions = {
             nodes: {
                 shape: 'box',
@@ -27,8 +30,12 @@ class GraphRenderer {
                 smooth: { type: 'cubicBezier' }
             },
             physics: {
-                enabled: true,
-                stabilization: { iterations: 100 }
+                enabled: !isLarge,
+                stabilization: { iterations: isLarge ? 0 : 100 }
+            },
+            layout: {
+                improvedLayout: !isLarge,
+                randomSeed: 42
             },
             interaction: {
                 zoomView: true,
@@ -42,6 +49,13 @@ class GraphRenderer {
             { nodes: this.nodes, edges: this.edges },
             { ...defaultOptions, ...options }
         );
+
+        // Auto-fit after render
+        setTimeout(() => {
+            if (this.network) {
+                this.network.fit();
+            }
+        }, 100);
 
         return this.network;
     }
