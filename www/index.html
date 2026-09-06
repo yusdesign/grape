@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>grape</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="js/lib/vis-network.min.css">
+</head>
+<body>
+    <div id="toolbar">
+        <button id="pickFileBtn">📂 Pick Graph File</button>
+        <button id="sampleBtn">📄 Load Sample</button>
+        <span id="status">Ready</span>
+        <span id="nodeCount">0 nodes</span>
+    </div>
+    <div id="graphContainer"></div>
+    <div id="debugConsole">
+        <div style="color:#44ff88;">🐛 Debug console active</div>
+    </div>
+
+    <!-- Capacitor (if available) -->
+    <script src="capacitor.js"></script>
+
+    <!-- Vendor libraries -->
+    <script src="js/lib/vis-network.min.js"></script>
+    <script src="js/lib/html2canvas.min.js"></script>
+
+    <!-- App scripts (order matters!) -->
+    <script src="js/CheckSystem.js"></script>
+    <script src="js/GraphParser.js"></script>
+    <script src="js/GraphRenderer.js"></script>
+    <script src="js/FilePicker.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
