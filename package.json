@@ -1,36 +1,29 @@
 {
   "name": "grape",
   "version": "1.0.0",
-  "description": "grape is an app for viewing UML-like graphs with vis-network",
-  "main": "src/index.js",
+  "description": "Graph viewer for UML-like files (JSON, XML, SVG) using vis-network",
+  "main": "www/index.html",
   "type": "module",
   "scripts": {
-    "build": "mkdir -p www && cp -r src/* www/ && cp public/* www/ 2>/dev/null || true",
-    "build:android": "npm run build && npx cap sync android",
-    "build:apk": "cd android && ./gradlew assembleDebug",
-    "build:release": "cd android && ./gradlew assembleRelease",
-    "clean": "rm -rf www/ android/ ios/",
-    "serve": "npx serve src",
-    "test": "echo \"No tests yet\" && exit 0"
+    "start": "node index.js",
+    "test": "node --test tests/*.test.js",
+    "sync": "npx cap sync android",
+    "build:apk": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
-    "@capacitor/android": "^8.0.0",
-    "@capacitor/core": "^8.0.0",
-    "@capacitor/filesystem": "^8.0.0",
-    "@capacitor/share": "^8.0.0",
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/filesystem": "^8.1.2",
     "@capawesome/capacitor-asset-manager": "^8.0.3",
-    "vis-network": "^9.1.2"
+    "@capawesome/capacitor-file-picker": "^8.0.3",
+    "html2canvas": "^1.4.1",
+    "vis-network": "^10.1.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.0.0",
-    "serve": "^14.2.1"
+    "@capacitor/cli": "^8.4.2",
+    "@types/node": "^20.11.0"
   },
-  "capacitor": {
-    "appId": "com.yusdesign.grape",
-    "appName": "grape",
-    "webDir": "www"
-  },
-  "overrides": {
-    "uuid": "^11.0.0"
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
