@@ -138,6 +138,63 @@ body {
 #menuDropdown div:first-child { border-radius: 8px 8px 0 0; }
 #menuDropdown div:last-child { border-radius: 0 0 8px 8px; }
 
+/* --- URL Input Container --- */
+#urlInputContainer {
+    display: none;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+#urlInputContainer input {
+    flex: 1;
+    min-width: 200px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+}
+
+#urlInputContainer input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+
+#urlInputContainer button#urlLoadBtn {
+    background: var(--accent-blue);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#urlInputContainer button#urlLoadBtn:hover {
+    background: #4d8fd6;
+}
+
+#urlInputContainer button#urlCancelBtn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#urlInputContainer button#urlCancelBtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
 /* --- Graph Container --- */
 #graphContainer {
     flex: 1;
@@ -262,4 +319,7 @@ body {
     #debugConsole { font-size: 9px; max-height: 80px; min-height: 40px; }
     #menuDropdown { min-width: 140px; }
     #menuDropdown div { font-size: 12px; padding: 6px 12px; }
+    #urlInputContainer { flex-direction: column; padding: 8px; }
+    #urlInputContainer input { width: 100%; min-width: unset; }
+    #urlInputContainer button { width: 100%; }
 }
