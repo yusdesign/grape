@@ -1,4 +1,4 @@
-// www/js/GraphRenderer.js
+// www/js/GraphRenderer.js - Full Feature Implementation
 class GraphRenderer {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -16,24 +16,26 @@ class GraphRenderer {
         this.edges.clear();
 
         const isUML = this.detectUML(graphData);
-        this.applyNodeStyling(graphData, isUML);
+        this.applyAdvancedStyling(graphData, isUML);
 
         this.nodes.add(graphData.nodes);
         this.edges.add(graphData.edges);
 
         const isLarge = graphData.nodes.length > 500;
 
+        // --- HIERARCHICAL LAYOUT WITH OVERLAP AVOIDANCE ---
         const layoutOptions = {
             hierarchical: {
                 enabled: !isLarge && (options.hierarchical !== false),
-                direction: 'UD',
+                direction: 'UD',        // Up-Down
                 sortMethod: 'directed',
-                nodeSpacing: 150,
-                levelSeparation: 200,
+                nodeSpacing: 200,       // Increased for overlap avoidance
+                levelSeparation: 250,   // More vertical space
                 treeSpacing: 200,
                 blockShifting: true,
                 edgeMinimization: true,
-                parentCentralization: true
+                parentCentralization: true,
+                overlapAvoidance: true  // ⭐ Prevent node overlap
             },
             randomSeed: 42,
             improvedLayout: !isLarge
@@ -43,69 +45,94 @@ class GraphRenderer {
             layoutOptions.hierarchical.enabled = false;
         }
 
-        // --- EDITING CONFIGURATION ---
-        const manipulationOptions = {
-            enabled: false, // Turned on/off via toggleEditMode()
-            initiallyActive: false,
-            addNode: true,
-            addEdge: true,
-            editNode: true,
-            editEdge: true,
-            deleteNode: true,
-            deleteEdge: true,
-            controlNodeStyle: {
-                shape: 'circle',
-                size: 15,
-                color: {
-                    background: '#58a6ff',
-                    border: '#1f6feb',
-                    highlight: {
-                        background: '#79c0ff',
-                        border: '#58a6ff'
-                    }
-                }
-            }
-        };
-
+        // --- ADVANCED NODE STYLING (Images, Borders, Padding) ---
         const defaultOptions = {
             nodes: {
                 shape: 'box',
-                margin: 10,
-                font: { 
-                    size: 14, 
+                margin: 12,
+                widthConstraint: {
+                    minimum: 100,
+                    maximum: 300
+                },
+                heightConstraint: {
+                    minimum: 40
+                },
+                font: {
+                    size: 14,
                     face: 'Arial',
-                    color: '#e6edf3'
+                    color: '#e6edf3',
+                    multi: 'html',      // ⭐ Enable multi-font (bold, color, etc.)
+                    bold: {
+                        size: 16,
+                        face: 'Arial',
+                        color: '#ffffff'
+                    },
+                    ital: {
+                        size: 13,
+                        face: 'Arial',
+                        color: '#8b949e'
+                    }
                 },
                 borderWidth: 2,
-                shadow: true,
-                widthConstraint: {
-                    minimum: 80,
-                    maximum: 200
+                borderWidthSelected: 4,
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0,0,0,0.5)',
+                    size: 10,
+                    x: 5,
+                    y: 5
+                },
+                padding: 10,            // ⭐ Padding inside nodes
+                shapeProperties: {
+                    borderRadius: 6,    // ⭐ Rounded corners
+                    useImageSize: true
                 }
             },
             edges: {
-                arrows: { to: { enabled: true, scaleFactor: 0.8 } },
-                smooth: { type: 'cubicBezier', roundness: 0.2 },
+                arrows: {
+                    to: { enabled: true, scaleFactor: 0.8 },
+                    from: { enabled: false }
+                },
+                smooth: {
+                    type: 'cubicBezier',
+                    roundness: 0.3,
+                    forceDirection: 'none'
+                },
                 font: {
-                    size: 10,
+                    size: 11,
                     color: '#8b949e',
                     face: 'Arial',
-                    align: 'middle'
+                    align: 'middle',
+                    background: '#0d1117',  // ⭐ Background behind label
+                    strokeWidth: 2,
+                    strokeColor: '#0d1117'
                 },
-                color: { color: '#484f58', highlight: '#58a6ff' },
-                width: 1.5
+                color: {
+                    color: '#484f58',
+                    highlight: '#58a6ff',
+                    hover: '#58a6ff',
+                    inherit: 'from'
+                },
+                width: 1.5,
+                selectionWidth: 3,
+                hoverWidth: 2.5,
+                dashes: false
             },
             physics: {
                 enabled: !isLarge,
-                stabilization: { iterations: isLarge ? 0 : 100 },
+                stabilization: { iterations: isLarge ? 0 : 150 },
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
                     gravitationalConstant: -50,
                     centralGravity: 0.01,
-                    springLength: 120,
+                    springLength: 150,
                     springConstant: 0.08,
-                    damping: 0.4
-                }
+                    damping: 0.4,
+                    avoidOverlap: 0.5   // ⭐ Physics overlap avoidance
+                },
+                maxVelocity: 50,
+                minVelocity: 0.1,
+                timestep: 0.5
             },
             layout: layoutOptions,
             interaction: {
@@ -118,9 +145,30 @@ class GraphRenderer {
                 dragNodes: true,
                 dragView: true,
                 hideEdgesOnDrag: false,
-                hideNodesOnDrag: false
+                hideNodesOnDrag: false,
+                selectConnectedEdges: true  // ⭐ Select connected edges with node
             },
-            manipulation: manipulationOptions
+            manipulation: {
+                enabled: false,
+                addNode: true,
+                addEdge: true,
+                editNode: this.editNodeCallback.bind(this),
+                editEdge: this.editEdgeCallback.bind(this),
+                deleteNode: true,
+                deleteEdge: true,
+                controlNodeStyle: {
+                    shape: 'circle',
+                    size: 15,
+                    color: {
+                        background: '#58a6ff',
+                        border: '#1f6feb',
+                        highlight: {
+                            background: '#79c0ff',
+                            border: '#58a6ff'
+                        }
+                    }
+                }
+            }
         };
 
         this.network = new vis.Network(
@@ -129,10 +177,9 @@ class GraphRenderer {
             { ...defaultOptions, ...options }
         );
 
-        // --- Setup editing events ---
+        // --- Setup events ---
         this.setupEditEvents();
 
-        // Auto-fit after render
         setTimeout(() => {
             if (this.network) {
                 this.network.fit();
@@ -140,52 +187,170 @@ class GraphRenderer {
                     this.centerRoot();
                 }
             }
-        }, 200);
+        }, 300);
 
         return this.network;
     }
 
-    // --- Setup edit events ---
-    setupEditEvents() {
-        if (!this.network) return;
-
-        // Node selection
-        this.network.on('click', (params) => {
-            if (params.nodes.length > 0) {
-                this.selectedNodeId = params.nodes[0];
-                this.selectedEdgeId = null;
-                const node = this.nodes.get(this.selectedNodeId);
-                addDebugLog(`📌 Selected node: ${node.label || node.id}`, 'info');
-            } else if (params.edges.length > 0) {
-                this.selectedEdgeId = params.edges[0];
-                this.selectedNodeId = null;
-                const edge = this.edges.get(this.selectedEdgeId);
-                addDebugLog(`🔗 Selected edge: ${edge.label || edge.id}`, 'info');
-            } else {
-                this.selectedNodeId = null;
-                this.selectedEdgeId = null;
-            }
-        });
-
-        // Double-click to edit node
-        this.network.on('doubleClick', (params) => {
-            if (params.nodes.length > 0 && this.editMode) {
-                const nodeId = params.nodes[0];
-                this.editNode(nodeId);
-            }
-        });
-
-        // Right-click context menu
-        this.network.on('oncontext', (params) => {
-            params.event.preventDefault();
-            if (params.nodes.length > 0 && this.editMode) {
-                const nodeId = params.nodes[0];
-                this.showNodeContextMenu(params.event.clientX, params.event.clientY, nodeId);
-            }
-        });
+    // --- Edit Node Callback (FIXED) ---
+    editNodeCallback(data, callback) {
+        // data = { id, label, type, ... }
+        const newLabel = prompt('✏️ Edit node label:', data.label || data.id);
+        if (newLabel !== null && newLabel.trim()) {
+            data.label = newLabel.trim();
+            callback(data);
+            addDebugLog(`✏️ Updated node: ${newLabel.trim()}`, 'success');
+        } else {
+            callback(null);
+        }
     }
 
-    // --- Toggle edit mode ---
+    // --- Edit Edge Callback (FIXED) ---
+    editEdgeCallback(data, callback) {
+        const newLabel = prompt('🔗 Edit edge label:', data.label || '');
+        if (newLabel !== null) {
+            data.label = newLabel.trim() || undefined;
+            callback(data);
+            addDebugLog(`🔗 Updated edge: ${data.label || 'no label'}`, 'success');
+        } else {
+            callback(null);
+        }
+    }
+
+    // --- Apply Advanced Styling ---
+    applyAdvancedStyling(graphData, isUML) {
+        const typeColors = {
+            'class': { bg: '#1f6feb', border: '#58a6ff', icon: '📦' },
+            'interface': { bg: '#1a7f37', border: '#3fb950', icon: '🔌' },
+            'enum': { bg: '#9e6a03', border: '#d29922', icon: '📋' },
+            'abstract': { bg: '#6f42c1', border: '#bc8cff', icon: '📐' },
+            'entity': { bg: '#0d419d', border: '#3b82f6', icon: '📊' },
+            'component': { bg: '#6b4c2a', border: '#d97706', icon: '🧩' },
+            'default': { bg: '#1c2333', border: '#58a6ff', icon: '📄' }
+        };
+
+        graphData.nodes.forEach(node => {
+            const type = (node.type || 'default').toLowerCase();
+            const colors = typeColors[type] || typeColors.default;
+
+            // Node shape based on type
+            if (isUML) {
+                node.shape = 'box';
+                node.shapeProperties = { borderRadius: 6 };
+            }
+
+            // Multi-font label with icon and type
+            if (node.type && node.type !== 'default') {
+                const icon = typeColors[node.type.toLowerCase()]?.icon || '';
+                node.label = `<b>${icon} ${node.label || node.id}</b>`;
+                // Add type as subtitle
+                if (node.stereotype) {
+                    node.label += `\n<i>«${node.stereotype}»</i>`;
+                }
+            }
+
+            node.color = {
+                background: colors.bg,
+                border: colors.border,
+                highlight: {
+                    background: colors.border,
+                    border: colors.bg
+                },
+                hover: {
+                    background: colors.border,
+                    border: colors.bg
+                }
+            };
+
+            node.font = {
+                color: '#e6edf3',
+                multi: 'html',
+                size: 14,
+                bold: {
+                    color: '#ffffff',
+                    size: 16
+                }
+            };
+
+            node.padding = 12;
+            node.borderWidth = 2;
+            node.borderWidthSelected = 4;
+            node.shadow = {
+                enabled: true,
+                color: 'rgba(0,0,0,0.4)',
+                size: 8,
+                x: 3,
+                y: 3
+            };
+        });
+
+        // --- Edge styling with UML relationship types ---
+        if (graphData.edges) {
+            graphData.edges.forEach(edge => {
+                // Detect relationship type from label or type
+                const label = (edge.label || '').toLowerCase();
+                let arrowType = 'to';
+                let dashPattern = false;
+                let relationshipLabel = edge.label || '';
+
+                if (label.includes('extends') || label.includes('inherits')) {
+                    arrowType = 'to';
+                    dashPattern = false;
+                    relationshipLabel = '▲ extends';
+                } else if (label.includes('implements')) {
+                    arrowType = 'to';
+                    dashPattern = true;
+                    relationshipLabel = '△ implements';
+                } else if (label.includes('association')) {
+                    arrowType = 'to';
+                    dashPattern = false;
+                    relationshipLabel = '▸ association';
+                } else if (label.includes('aggregation')) {
+                    arrowType = 'to';
+                    dashPattern = false;
+                    relationshipLabel = '◇ aggregation';
+                } else if (label.includes('composition')) {
+                    arrowType = 'to';
+                    dashPattern = false;
+                    relationshipLabel = '◆ composition';
+                } else if (label.includes('dependency')) {
+                    arrowType = 'to';
+                    dashPattern = true;
+                    relationshipLabel = '⇢ dependency';
+                } else if (label.includes('realization')) {
+                    arrowType = 'to';
+                    dashPattern = true;
+                    relationshipLabel = '⚡ realization';
+                }
+
+                edge.arrows = { to: { enabled: true } };
+                edge.dashes = dashPattern;
+                edge.label = relationshipLabel || edge.label;
+                edge.font = {
+                    align: 'middle',
+                    background: '#0d1117',
+                    strokeWidth: 3,
+                    strokeColor: '#0d1117',
+                    size: 10,
+                    color: '#8b949e'
+                };
+                edge.width = 2;
+                edge.selectionWidth = 4;
+                edge.color = {
+                    color: '#484f58',
+                    highlight: '#58a6ff',
+                    hover: '#58a6ff'
+                };
+                edge.smooth = {
+                    type: 'cubicBezier',
+                    roundness: 0.3,
+                    forceDirection: 'none'
+                };
+            });
+        }
+    }
+
+    // --- Toggle Edit Mode ---
     toggleEditMode() {
         if (!this.network) return false;
         
@@ -195,14 +360,13 @@ class GraphRenderer {
                 enabled: this.editMode,
                 addNode: true,
                 addEdge: true,
-                editNode: true,
-                editEdge: true,
+                editNode: this.editNodeCallback.bind(this),
+                editEdge: this.editEdgeCallback.bind(this),
                 deleteNode: true,
                 deleteEdge: true
             }
         });
         
-        // Show/hide navigation buttons based on edit mode
         this.network.setOptions({
             interaction: {
                 navigationButtons: !this.editMode
@@ -213,106 +377,13 @@ class GraphRenderer {
         return this.editMode;
     }
 
-    // --- Edit node (show prompt) ---
-    editNode(nodeId) {
-        const node = this.nodes.get(nodeId);
-        if (!node) return;
-        
-        const newLabel = prompt('Edit node label:', node.label || node.id);
-        if (newLabel !== null && newLabel.trim()) {
-            this.nodes.update({ id: nodeId, label: newLabel.trim() });
-            addDebugLog(`✏️ Updated node: ${newLabel.trim()}`, 'success');
-        }
-    }
-
-    // --- Show context menu for node ---
-    showNodeContextMenu(x, y, nodeId) {
-        const node = this.nodes.get(nodeId);
-        if (!node) return;
-        
-        const menu = document.getElementById('contextMenu');
-        const content = document.getElementById('contextMenuContent');
-        
-        content.innerHTML = `
-            <div style="font-weight:bold;margin-bottom:8px;color:#e6edf3;">${node.label || node.id}</div>
-            <button onclick="window.app.renderer.editNode('${nodeId}')" style="width:100%;padding:4px;background:#58a6ff;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-bottom:4px;">✏️ Edit</button>
-            <button onclick="window.app.renderer.deleteNode('${nodeId}')" style="width:100%;padding:4px;background:#f85149;color:#fff;border:none;border-radius:4px;cursor:pointer;">🗑️ Delete</button>
-        `;
-        
-        menu.style.display = 'block';
-        menu.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
-        menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
-    }
-
-    // --- Delete node ---
-    deleteNode(nodeId) {
-        if (confirm('Delete this node and its connected edges?')) {
-            this.nodes.remove(nodeId);
-            addDebugLog(`🗑️ Deleted node: ${nodeId}`, 'info');
-            document.getElementById('contextMenu').style.display = 'none';
-        }
-    }
-
-    // --- Add node at position ---
-    addNodeAt(x, y) {
-        if (!this.network || !this.editMode) return;
-        
-        const pos = this.network.getScreenToCanvas({ x, y });
-        const newNode = {
-            id: `node_${Date.now()}`,
-            label: 'New Node',
-            x: pos.x,
-            y: pos.y,
-            shape: 'box',
-            color: {
-                background: '#1f6feb',
-                border: '#58a6ff'
-            }
-        };
-        this.nodes.add(newNode);
-        addDebugLog(`➕ Added new node at (${pos.x}, ${pos.y})`, 'success');
-        return newNode;
-    }
-
-    // --- Export as JSON ---
-    exportGraph() {
-        return {
-            nodes: this.nodes.get(),
-            edges: this.edges.get(),
-            metadata: {
-                exportedAt: new Date().toISOString(),
-                nodeCount: this.nodes.length,
-                edgeCount: this.edges.length,
-                layout: this.currentLayout
-            }
-        };
-    }
-
-    // --- Import from JSON ---
-    importGraph(data) {
-        if (data.nodes && data.edges) {
-            this.nodes.clear();
-            this.edges.clear();
-            this.nodes.add(data.nodes);
-            this.edges.add(data.edges);
-            
-            // Re-render with current settings
-            const currentData = {
-                nodes: this.nodes.get(),
-                edges: this.edges.get()
-            };
-            this.render(currentData);
-            addDebugLog(`📥 Imported graph: ${data.nodes.length} nodes, ${data.edges.length} edges`, 'success');
-            return true;
-        }
-        return false;
-    }
-
-    // --- Detect UML-like graphs ---
+    // --- Detect UML ---
     detectUML(graphData) {
         if (!graphData.nodes || graphData.nodes.length === 0) return false;
         
-        const umlKeywords = ['class', 'interface', 'enum', 'abstract', 'extends', 'implements', 'association', 'aggregation', 'composition'];
+        const umlKeywords = ['class', 'interface', 'enum', 'abstract', 'extends', 
+                           'implements', 'association', 'aggregation', 'composition',
+                           'entity', 'component', 'stereotype', '«', '»'];
         let umlScore = 0;
         
         graphData.nodes.forEach(node => {
@@ -333,47 +404,10 @@ class GraphRenderer {
             });
         }
         
-        return umlScore > graphData.nodes.length * 0.2;
+        return umlScore > graphData.nodes.length * 0.15;
     }
 
-    // --- Apply styling based on node type ---
-    applyNodeStyling(graphData, isUML) {
-        const colorMap = {
-            'class': { background: '#1f6feb', border: '#58a6ff' },
-            'interface': { background: '#1a7f37', border: '#3fb950' },
-            'enum': { background: '#9e6a03', border: '#d29922' },
-            'abstract': { background: '#6f42c1', border: '#bc8cff' },
-            'default': { background: '#1c2333', border: '#58a6ff' }
-        };
-
-        graphData.nodes.forEach(node => {
-            if (isUML) {
-                node.shape = 'box';
-                node.borderWidth = 2;
-                
-                const type = (node.type || 'default').toLowerCase();
-                const colors = colorMap[type] || colorMap.default;
-                node.color = {
-                    background: colors.background,
-                    border: colors.border,
-                    highlight: {
-                        background: colors.border,
-                        border: colors.background
-                    }
-                };
-                
-                if (node.stereotype) {
-                    node.label = `«${node.stereotype}»\n${node.label}`;
-                }
-            }
-            
-            if (!node.font) {
-                node.font = { color: '#e6edf3' };
-            }
-        });
-    }
-
-    // --- Center root node ---
+    // --- Center Root ---
     centerRoot() {
         if (!this.network) return;
         const incoming = new Set();
@@ -394,7 +428,7 @@ class GraphRenderer {
         }
     }
 
-    // --- Switch layout ---
+    // --- Switch Layout ---
     switchLayout(type) {
         if (!this.network) return;
         
@@ -403,7 +437,8 @@ class GraphRenderer {
             edges: this.edges.get()
         };
         
-        const isHierarchical = type === 'hierarchical' || (type === 'auto' && this.detectUML(currentData));
+        const isHierarchical = type === 'hierarchical' || 
+                              (type === 'auto' && this.detectUML(currentData));
         
         const options = {
             layout: {
@@ -411,26 +446,28 @@ class GraphRenderer {
                     enabled: isHierarchical,
                     direction: 'UD',
                     sortMethod: 'directed',
-                    nodeSpacing: 150,
-                    levelSeparation: 200,
+                    nodeSpacing: 200,
+                    levelSeparation: 250,
                     treeSpacing: 200,
                     blockShifting: true,
                     edgeMinimization: true,
-                    parentCentralization: true
+                    parentCentralization: true,
+                    overlapAvoidance: true
                 },
                 randomSeed: 42,
                 improvedLayout: true
             },
             physics: {
                 enabled: !isHierarchical,
-                stabilization: { iterations: 100 },
+                stabilization: { iterations: 150 },
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: {
                     gravitationalConstant: -50,
                     centralGravity: 0.01,
-                    springLength: 120,
+                    springLength: 150,
                     springConstant: 0.08,
-                    damping: 0.4
+                    damping: 0.4,
+                    avoidOverlap: 0.5
                 }
             }
         };
