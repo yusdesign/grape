@@ -46,19 +46,41 @@
     <div id="graphContainer"></div>
 
     <!-- ===== SETTINGS DRAWER TOGGLE ===== -->
-    <button id="settingsToggle" style="position:fixed; bottom:20px; right:20px; z-index:100; background:#1a2332; border:1px solid #30363d; border-radius:50%; width:48px; height:48px; font-size:20px; cursor:pointer; color:#e6edf3; box-shadow:0 4px 16px rgba(0,0,0,0.5);">⚙️</button>
+    <button id="settingsToggle" style="position:fixed; bottom:20px; right:20px; z-index:100; background:#1a2332; border:1px solid #30363d; border-radius:5%; width:45px; height:45px; font-size:20px; cursor:pointer; color:#e6edf3; box-shadow:0 4px 16px rgba(0,0,0,0.5);">⚙️</button>
     
     <!-- ===== SETTINGS DRAWER ===== -->
-    <div id="settingsDrawer" style="position:fixed; bottom:80px; right:20px; width:300px; max-height:400px; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; z-index:99; box-shadow:0 4px 16px rgba(0,0,0,0.5); display:none; overflow-y:auto;">
+    <div id="settingsDrawer" style="position:fixed; bottom:80px; right:20px; width:320px; max-height:450px; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; z-index:99; box-shadow:0 4px 16px rgba(0,0,0,0.5); display:none; overflow-y:auto;">
         <h3 style="color:#e6edf3; margin:0 0 12px 0; font-size:14px;">⚙️ Graph Settings</h3>
         
+        <!-- Layout Method -->
         <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Layout:</label>
-            <select id="layoutSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
-                <option value="hierarchical">🌳 Hierarchical</option>
-                <option value="force">🔄 Force</option>
-                <option value="grape">🍇 Grape Tree</option>
+            <label style="color:#8b949e; font-size:12px;">Layout Method:</label>
+            <select id="layoutMethodSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                <option value="hubsize">📊 Hub Size</option>
+                <option value="direction">🧭 Direction</option>
+                <option value="directed">↗️ Directed</option>
             </select>
+        </div>
+        
+        <!-- Shake Towards -->
+        <div style="margin-bottom:10px;">
+            <label style="color:#8b949e; font-size:12px;">Shake Towards:</label>
+            <select id="shakeSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                <option value="leaves">🌿 Leaves</option>
+                <option value="roots">🌳 Roots</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom:10px;">
+            <label style="color:#8b949e; font-size:12px;">Node Spacing:</label>
+            <input type="range" id="nodeSpacingSlider" min="50" max="300" value="150" style="width:100%;">
+            <span id="nodeSpacingValue" style="color:#8b949e; font-size:11px;">150</span>
+        </div>
+        
+        <div style="margin-bottom:10px;">
+            <label style="color:#8b949e; font-size:12px;">Level Separation:</label>
+            <input type="range" id="levelSepSlider" min="100" max="400" value="200" style="width:100%;">
+            <span id="levelSepValue" style="color:#8b949e; font-size:11px;">200</span>
         </div>
         
         <div style="margin-bottom:10px;">
