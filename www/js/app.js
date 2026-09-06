@@ -124,10 +124,21 @@ class GrapeApp {
         });
         
         // Menu items
+        const menuLoadURL = document.getElementById('menuLoadURL');
         const menuPickFile = document.getElementById('menuPickFile');
         const menuExport = document.getElementById('menuExport');
         const menuReset = document.getElementById('menuReset');
         const menuShare = document.getElementById('menuShare');
+
+        if (menuLoadURL) {
+            menuLoadURL.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addDebugLog('🌐 Menu: Load from URL clicked', 'info');
+                this.loadFromURL();
+                this.isMenuOpen = false;
+                document.getElementById('menuDropdown').style.display = 'none';
+            });
+        }
         
         if (menuPickFile) {
             menuPickFile.addEventListener('click', (e) => {
