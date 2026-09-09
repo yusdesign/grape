@@ -252,9 +252,9 @@ class GrapeApp {
         }
     }
 
-    // --- Settings Drawer ---
+    // --- Enhanced Settings Drawer with Tabs ---
     setupSettingsDrawer() {
-        console.log('⚙️ Setting up settings drawer...');
+        console.log('⚙️ Setting up enhanced settings drawer...');
         
         const toggle = document.getElementById('settingsToggle');
         const drawer = document.getElementById('settingsDrawer');
@@ -266,27 +266,103 @@ class GrapeApp {
         
         let isOpen = false;
     
+        // ===== TABS =====
+        const tabs = document.querySelectorAll('.settings-tab');
+        const contents = {
+            graph: document.getElementById('settingsTabGraph'),
+            nodes: document.getElementById('settingsTabNodes'),
+            edges: document.getElementById('settingsTabEdges')
+        };
+    
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Update tab styles
+                tabs.forEach(t => {
+                    t.classList.remove('active');
+                    t.style.color = '#8b949e';
+                    t.style.borderBottom = '2px solid transparent';
+                });
+                tab.classList.add('active');
+                tab.style.color = '#e6edf3';
+                tab.style.borderBottom = '2px solid #58a6ff';
+    
+                // Show selected content
+                const tabName = tab.dataset.tab;
+                Object.keys(contents).forEach(key => {
+                    if (contents[key]) {
+                        contents[key].style.display = key === tabName ? 'block' : 'none';
+                    }
+                });
+            });
+        });
+    
+        // ===== SLIDER VALUE UPDATES =====
+        const sliders = [
+            { id: 'nodeSpacingSlider', display: 'nodeSpacingValue' },
+            { id: 'levelSepSlider', display: 'levelSepValue' },
+            { id: 'nodeSizeSlider', display: 'nodeSizeValue' },
+            { id: 'nodeFontSizeSlider', display: 'nodeFontSizeValue' },
+            { id: 'nodeBorderSlider', display: 'nodeBorderValue' },
+            { id: 'edgeWidthSlider', display: 'edgeWidthValue' },
+            { id: 'edgeFontSizeSlider', display: 'edgeFontSizeValue' },
+            { id: 'edgeArrowScale', display: 'edgeArrowScaleValue' }
+        ];
+    
+        sliders.forEach(({ id, display }) => {
+            const slider = document.getElementById(id);
+            const displayEl = document.getElementById(display);
+            if (slider && displayEl) {
+                slider.addEventListener('input', () => {
+                    displayEl.textContent = slider.value;
+                });
+            }
+        });
+    
+        // ===== TOGGLE DRAWER =====
         toggle.addEventListener('click', () => {
             isOpen = !isOpen;
             drawer.style.display = isOpen ? 'block' : 'none';
             this.addDebugLog(`⚙️ Settings drawer ${isOpen ? 'opened' : 'closed'}`, 'debug');
         });
     
-        // Apply settings button
+        // ===== APPLY SETTINGS =====
         const applyBtn = document.getElementById('applySettingsBtn');
         if (applyBtn) {
             applyBtn.addEventListener('click', () => {
                 if (!this.renderer || !this.renderer.network) {
                     this.addDebugLog('⚠️ No graph to apply settings', 'warn');
+                    this.showToast('No graph loaded', 'error');
                     return;
                 }
     
+                // Graph settings
                 const layout = document.getElementById('layoutSelect').value;
-                const nodeSize = parseInt(document.getElementById('nodeSizeSlider').value);
-                const edgeWidth = parseInt(document.getElementById('edgeWidthSlider').value);
+                const layoutMethod = document.getElementById('layoutMethodSelect').value;
+                const shakeTowards = document.getElementById('shakeSelect').value;
+                const nodeSpacing = parseInt(document.getElementById('nodeSpacingSlider').value);
+                const levelSep = parseInt(document.getElementById('levelSepSlider').value);
                 const physics = document.getElementById('physicsToggle').checked;
+                const stabilization = document.getElementById('stabilizationToggle').checked;
     
-                // Apply layout
+                // Node settings
+                const nodeSize = parseInt(document.getElementById('nodeSizeSlider').value);
+                const nodeFontSize = parseInt(document.getElementById('nodeFontSizeSlider').value);
+                const nodeBorder = parseInt(document.getElementById('nodeBorderSlider').value);
+                const nodeShape = document.getElementById('nodeShapeSelect').value;
+                const nodeColor = document.getElementById('nodeColorPicker').value;
+                const nodeBorderColor = document.getElementById('nodeBorderColorPicker').value;
+                const nodeShadow = document.getElementById('nodeShadowToggle').checked;
+    
+                // Edge settings
+                const edgeWidth = parseInt(document.getElementById('edgeWidthSlider').value);
+                const edgeFontSize = parseInt(document.getElementById('edgeFontSizeSlider').value);
+                const edgeColor = document.getElementById('edgeColorPicker').value;
+                const edgeHighlight = document.getElementById('edgeHighlightColorPicker').value;
+                const edgeSmooth = document.getElementById('edgeSmoothSelect').value;
+                const edgeArrowScale = parseFloat(document.getElementById('edgeArrowScale').value);
+                const edgeDashes = document.getElementById('edgeDashesToggle').checked;
+    
+                // Apply layout (if grape tree)
                 if (layout === 'grape' && this.renderer.applyGrapeLayout) {
                     this.renderer.applyGrapeLayout();
                     this.addDebugLog('🍇 Grape tree layout applied', 'success');
@@ -295,11 +371,50 @@ class GrapeApp {
                     this.addDebugLog(`📐 Switched to ${layout} layout`, 'success');
                 }
     
-                // Apply styling
+                // Apply hierarchical settings
+                if (this.renderer.applyHierarchicalLayout) {
+                    this.renderer.applyHierarchicalLayout({
+                        method: layoutMethod,
+                        shakeTowards: shakeTowards,
+                        nodeSpacing: nodeSpacing,
+                        levelSeparation: levelSep
+                    });
+                }
+    
+                // Apply node styling
                 this.renderer.network.setOptions({
-                    nodes: { size: nodeSize },
-                    edges: { width: edgeWidth },
-                    physics: { enabled: physics }
+                    nodes: {
+                        size: nodeSize,
+                        font: { size: nodeFontSize },
+                        borderWidth: nodeBorder,
+                        shape: nodeShape,
+                        color: {
+                            background: nodeColor,
+                            border: nodeBorderColor,
+                            highlight: {
+                                background: nodeColor,
+                                border: nodeBorderColor
+                            }
+                        },
+                        shadow: nodeShadow
+                    },
+                    edges: {
+                        width: edgeWidth,
+                        font: { size: edgeFontSize },
+                        color: {
+                            color: edgeColor,
+                            highlight: edgeHighlight
+                        },
+                        smooth: { type: edgeSmooth },
+                        arrows: {
+                            to: { scaleFactor: edgeArrowScale }
+                        },
+                        dashes: edgeDashes
+                    },
+                    physics: {
+                        enabled: physics,
+                        stabilization: stabilization
+                    }
                 });
     
                 // Update layout label
@@ -313,13 +428,55 @@ class GrapeApp {
                     layoutLabel.textContent = layoutNames[layout] || layout;
                 }
     
-                this.addDebugLog(`✅ Settings applied: node size ${nodeSize}, edge width ${edgeWidth}, physics ${physics ? 'on' : 'off'}`, 'success');
+                this.addDebugLog(`✅ All settings applied (${layout} layout, ${nodeShape} nodes, ${edgeSmooth} edges)`, 'success');
+                this.showToast('✅ Settings applied', 'success');
                 drawer.style.display = 'none';
                 isOpen = false;
             });
         }
-        
-        this.addDebugLog('✅ Settings drawer setup complete', 'success');
+    
+        // ===== RESET DEFAULTS =====
+        // Add a reset button if needed
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = 'Reset Defaults';
+        resetBtn.style.cssText = 'width:100%; padding:6px; margin-top:4px; background:#6b4c2a; border:1px solid #d97706; border-radius:4px; color:#fff; cursor:pointer; font-size:12px;';
+        resetBtn.addEventListener('click', () => {
+            // Reset sliders and selects to defaults
+            document.getElementById('layoutSelect').value = 'hierarchical';
+            document.getElementById('layoutMethodSelect').value = 'hubsize';
+            document.getElementById('shakeSelect').value = 'leaves';
+            document.getElementById('nodeSpacingSlider').value = 150;
+            document.getElementById('nodeSpacingValue').textContent = '150';
+            document.getElementById('levelSepSlider').value = 200;
+            document.getElementById('levelSepValue').textContent = '200';
+            document.getElementById('physicsToggle').checked = true;
+            document.getElementById('stabilizationToggle').checked = true;
+            document.getElementById('nodeSizeSlider').value = 25;
+            document.getElementById('nodeSizeValue').textContent = '25';
+            document.getElementById('nodeFontSizeSlider').value = 14;
+            document.getElementById('nodeFontSizeValue').textContent = '14';
+            document.getElementById('nodeBorderSlider').value = 2;
+            document.getElementById('nodeBorderValue').textContent = '2';
+            document.getElementById('nodeShapeSelect').value = 'box';
+            document.getElementById('nodeColorPicker').value = '#1f6feb';
+            document.getElementById('nodeBorderColorPicker').value = '#58a6ff';
+            document.getElementById('nodeShadowToggle').checked = true;
+            document.getElementById('edgeWidthSlider').value = 2;
+            document.getElementById('edgeWidthValue').textContent = '2';
+            document.getElementById('edgeFontSizeSlider').value = 10;
+            document.getElementById('edgeFontSizeValue').textContent = '10';
+            document.getElementById('edgeColorPicker').value = '#484f58';
+            document.getElementById('edgeHighlightColorPicker').value = '#58a6ff';
+            document.getElementById('edgeSmoothSelect').value = 'cubicBezier';
+            document.getElementById('edgeArrowScale').value = 0.8;
+            document.getElementById('edgeArrowScaleValue').textContent = '0.8';
+            document.getElementById('edgeDashesToggle').checked = false;
+            this.addDebugLog('🔄 Settings reset to defaults', 'info');
+            this.showToast('Settings reset', 'info');
+        });
+        drawer.appendChild(resetBtn);
+    
+        this.addDebugLog('✅ Enhanced settings drawer setup complete', 'success');
     }
 
     // --- Process File Content ---
