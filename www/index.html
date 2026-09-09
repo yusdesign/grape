@@ -46,59 +46,176 @@
     <div id="graphContainer"></div>
 
     <!-- ===== SETTINGS DRAWER TOGGLE ===== -->
-    <button id="settingsToggle" style="position:fixed; bottom:20px; right:20px; z-index:100; background:#1a2332; border:1px solid #30363d; border-radius:5%; width:45px; height:45px; font-size:20px; cursor:pointer; color:#e6edf3; box-shadow:0 4px 16px rgba(0,0,0,0.5);">⚙️</button>
+    <button id="settingsToggle" style="position:fixed; bottom:20px; right:20px; z-index:100; background:#1a2332; border:1px solid #30363d; border-radius:50%; width:48px; height:48px; font-size:20px; cursor:pointer; color:#e6edf3; box-shadow:0 4px 16px rgba(0,0,0,0.5);">⚙️</button>
     
     <!-- ===== SETTINGS DRAWER ===== -->
-    <div id="settingsDrawer" style="position:fixed; bottom:80px; right:20px; width:320px; max-height:450px; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; z-index:99; box-shadow:0 4px 16px rgba(0,0,0,0.5); display:none; overflow-y:auto;">
+    <div id="settingsDrawer" style="position:fixed; bottom:80px; right:20px; width:340px; max-height:500px; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; z-index:99; box-shadow:0 4px 16px rgba(0,0,0,0.5); display:none; overflow-y:auto;">
+    
         <h3 style="color:#e6edf3; margin:0 0 12px 0; font-size:14px;">⚙️ Graph Settings</h3>
-        
-        <!-- Layout Method -->
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Layout Method:</label>
-            <select id="layoutMethodSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
-                <option value="hubsize">📊 Hub Size</option>
-                <option value="direction">🧭 Direction</option>
-                <option value="directed">↗️ Directed</option>
-            </select>
+    
+        <!-- ===== TABS ===== -->
+        <div style="display:flex; gap:4px; margin-bottom:12px; border-bottom:1px solid #30363d; padding-bottom:8px;">
+            <button class="settings-tab active" data-tab="graph" style="flex:1; padding:4px 8px; background:transparent; border:none; color:#e6edf3; cursor:pointer; font-size:12px; border-bottom:2px solid #58a6ff;">📊 Graph</button>
+            <button class="settings-tab" data-tab="nodes" style="flex:1; padding:4px 8px; background:transparent; border:none; color:#8b949e; cursor:pointer; font-size:12px; border-bottom:2px solid transparent;">🔵 Nodes</button>
+            <button class="settings-tab" data-tab="edges" style="flex:1; padding:4px 8px; background:transparent; border:none; color:#8b949e; cursor:pointer; font-size:12px; border-bottom:2px solid transparent;">🔗 Edges</button>
         </div>
-        
-        <!-- Shake Towards -->
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Shake Towards:</label>
-            <select id="shakeSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
-                <option value="leaves">🌿 Leaves</option>
-                <option value="roots">🌳 Roots</option>
-            </select>
+    
+        <!-- ===== GRAPH TAB ===== -->
+        <div id="settingsTabGraph" class="settings-tab-content">
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Layout:</label>
+                <select id="layoutSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                    <option value="hierarchical">🌳 Hierarchical</option>
+                    <option value="force">🔄 Force</option>
+                    <option value="grape">🍇 Grape Tree</option>
+                </select>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Layout Method:</label>
+                <select id="layoutMethodSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                    <option value="hubsize">📊 Hub Size</option>
+                    <option value="direction">🧭 Direction</option>
+                    <option value="directed">↗️ Directed</option>
+                </select>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Shake Towards:</label>
+                <select id="shakeSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                    <option value="leaves">🌿 Leaves</option>
+                    <option value="roots">🌳 Roots</option>
+                </select>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Node Spacing:</label>
+                <input type="range" id="nodeSpacingSlider" min="50" max="400" value="150" style="width:100%;">
+                <span id="nodeSpacingValue" style="color:#8b949e; font-size:11px;">150</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Level Separation:</label>
+                <input type="range" id="levelSepSlider" min="100" max="500" value="200" style="width:100%;">
+                <span id="levelSepValue" style="color:#8b949e; font-size:11px;">200</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Physics:</label>
+                <input type="checkbox" id="physicsToggle" checked style="margin-left:8px;">
+                <span style="color:#8b949e; font-size:11px; margin-left:4px;">Enabled</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Stabilization:</label>
+                <input type="checkbox" id="stabilizationToggle" checked style="margin-left:8px;">
+                <span style="color:#8b949e; font-size:11px; margin-left:4px;">Enabled</span>
+            </div>
         </div>
-        
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Node Spacing:</label>
-            <input type="range" id="nodeSpacingSlider" min="50" max="300" value="150" style="width:100%;">
-            <span id="nodeSpacingValue" style="color:#8b949e; font-size:11px;">150</span>
+    
+        <!-- ===== NODES TAB ===== -->
+        <div id="settingsTabNodes" class="settings-tab-content" style="display:none;">
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Node Size:</label>
+                <input type="range" id="nodeSizeSlider" min="10" max="60" value="25" style="width:100%;">
+                <span id="nodeSizeValue" style="color:#8b949e; font-size:11px;">25</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Font Size:</label>
+                <input type="range" id="nodeFontSizeSlider" min="8" max="24" value="14" style="width:100%;">
+                <span id="nodeFontSizeValue" style="color:#8b949e; font-size:11px;">14</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Border Width:</label>
+                <input type="range" id="nodeBorderSlider" min="1" max="6" value="2" style="width:100%;">
+                <span id="nodeBorderValue" style="color:#8b949e; font-size:11px;">2</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Node Shape:</label>
+                <select id="nodeShapeSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                    <option value="box">📦 Box</option>
+                    <option value="ellipse">🔵 Ellipse</option>
+                    <option value="circle">⭕ Circle</option>
+                    <option value="database">🗄️ Database</option>
+                    <option value="triangle">🔺 Triangle</option>
+                    <option value="star">⭐ Star</option>
+                    <option value="hexagon">⬡ Hexagon</option>
+                    <option value="square">⬜ Square</option>
+                    <option value="diamond">💎 Diamond</option>
+                </select>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Node Color:</label>
+                <input type="color" id="nodeColorPicker" value="#1f6feb" style="width:40px; height:30px; border:none; background:transparent; cursor:pointer;">
+                <span style="color:#8b949e; font-size:11px; margin-left:8px;">Background</span>
+                <input type="color" id="nodeBorderColorPicker" value="#58a6ff" style="width:40px; height:30px; border:none; background:transparent; cursor:pointer; margin-left:8px;">
+                <span style="color:#8b949e; font-size:11px;">Border</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Shadow:</label>
+                <input type="checkbox" id="nodeShadowToggle" checked style="margin-left:8px;">
+                <span style="color:#8b949e; font-size:11px; margin-left:4px;">Enabled</span>
+            </div>
         </div>
-        
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Level Separation:</label>
-            <input type="range" id="levelSepSlider" min="100" max="400" value="200" style="width:100%;">
-            <span id="levelSepValue" style="color:#8b949e; font-size:11px;">200</span>
+    
+        <!-- ===== EDGES TAB ===== -->
+        <div id="settingsTabEdges" class="settings-tab-content" style="display:none;">
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Edge Width:</label>
+                <input type="range" id="edgeWidthSlider" min="1" max="6" value="2" style="width:100%;">
+                <span id="edgeWidthValue" style="color:#8b949e; font-size:11px;">2</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Font Size:</label>
+                <input type="range" id="edgeFontSizeSlider" min="8" max="18" value="10" style="width:100%;">
+                <span id="edgeFontSizeValue" style="color:#8b949e; font-size:11px;">10</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Edge Color:</label>
+                <input type="color" id="edgeColorPicker" value="#484f58" style="width:40px; height:30px; border:none; background:transparent; cursor:pointer;">
+                <span style="color:#8b949e; font-size:11px;">Default</span>
+                <input type="color" id="edgeHighlightColorPicker" value="#58a6ff" style="width:40px; height:30px; border:none; background:transparent; cursor:pointer; margin-left:8px;">
+                <span style="color:#8b949e; font-size:11px;">Highlight</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Smooth Curves:</label>
+                <select id="edgeSmoothSelect" style="width:100%; padding:4px 8px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:4px; font-size:12px;">
+                    <option value="cubicBezier">🔄 Cubic Bezier</option>
+                    <option value="straight">➖ Straight</option>
+                    <option value="dynamic">〰️ Dynamic</option>
+                    <option value="continuous">〰️ Continuous</option>
+                    <option value="discrete">〰️ Discrete</option>
+                    <option value="diagonalCross">✖️ Diagonal Cross</option>
+                    <option value="straightCross">➕ Straight Cross</option>
+                    <option value="horizontal">➡️ Horizontal</option>
+                    <option value="vertical">⬇️ Vertical</option>
+                    <option value="curvedCW">🔃 Curved CW</option>
+                    <option value="curvedCCW">🔄 Curved CCW</option>
+                </select>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Arrow Scale:</label>
+                <input type="range" id="edgeArrowScale" min="0.5" max="2" step="0.1" value="0.8" style="width:100%;">
+                <span id="edgeArrowScaleValue" style="color:#8b949e; font-size:11px;">0.8</span>
+            </div>
+    
+            <div style="margin-bottom:10px;">
+                <label style="color:#8b949e; font-size:12px;">Dashed Lines:</label>
+                <input type="checkbox" id="edgeDashesToggle" style="margin-left:8px;">
+                <span style="color:#8b949e; font-size:11px; margin-left:4px;">Enabled</span>
+            </div>
         </div>
-        
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Node Size:</label>
-            <input type="range" id="nodeSizeSlider" min="10" max="50" value="25" style="width:100%;">
-        </div>
-        
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Edge Width:</label>
-            <input type="range" id="edgeWidthSlider" min="1" max="5" value="2" style="width:100%;">
-        </div>
-        
-        <div style="margin-bottom:10px;">
-            <label style="color:#8b949e; font-size:12px;">Physics:</label>
-            <input type="checkbox" id="physicsToggle" checked style="margin-left:8px;">
-        </div>
-        
-        <button id="applySettingsBtn" style="width:100%; padding:6px; background:#58a6ff; border:none; border-radius:4px; color:#fff; cursor:pointer; font-weight:bold;">Apply Settings</button>
+    
+        <button id="applySettingsBtn" style="width:100%; padding:8px; margin-top:8px; background:#58a6ff; border:none; border-radius:4px; color:#fff; cursor:pointer; font-weight:bold;">Apply Settings</button>
     </div>
 
     <!-- ===== DEBUG CONSOLE ===== -->
